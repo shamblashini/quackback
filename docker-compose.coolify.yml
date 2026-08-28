@@ -1,0 +1,228 @@
+# =============================================================================
+# Quackback on Coolify — Docker Compose build pack (Application resource)
+# =============================================================================
+# Deployed as: Coolify → Create New Resource → Public Repository →
+#              Build Pack: "Docker Compose"
+#   Repository URL       https://github.com/shamblashini/quackback
+#   Branch               selfhost
+#   Base Directory       /
+#   Docker Compose Loc.  /docker-compose.coolify.yml
+#
+# Coolify's git-based compose flow reads the compose file FROM THE REPOSITORY
+# (the UI field is a path, not a paste box), so this file has to be committed to
+# the fork before it can be used. See coolify-notes.md for the exact flow and
+# for the alternative that avoids committing anything.
+#
+# Deliberate omissions, each one required by Coolify's docs:
+#   - no `ports:`   — a published port bypasses the proxy entirely
+#                     (coolify.io/docs/knowledge-base/docker/compose)
+#   - no `networks:` — a custom network puts containers on two networks and
+#                      Traefik picks non-deterministically → intermittent 504s
+#                      (coolify.io/docs/applications/build-packs/docker-compose)
+#   - no `container_name:` — Coolify suffixes names with the resource UUID
+#   - no `restart:` — Coolify manages the restart policy for its resources
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # The app. One container serves HTTP and runs the background job worker
+  # (QUACKBACK_ROLE defaults to `all`), which is the single-node self-host shape.
+  #
+  # The image is built from this repository: apps/web/Dockerfile with the repo
+  # root as its build context. That Dockerfile already builds the widget bundle
+  # (`bun run --filter @quackback/widget build`) before the app build, so no
+  # build-command workaround is needed here — see coolify-notes.md.
+  # ---------------------------------------------------------------------------
+  quackback:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    # PID 1 reaper. The entrypoint `exec`s bun, so SIGTERM still reaches the
+    # process and the 30s graceful drain in startup.ts runs.
+    init: true
+    environment:
+      # --- Public origin -----------------------------------------------------
+      # Bare entry: this is what makes Coolify assign a domain to THIS service
+      # and point Traefik at container port 3000. Set the real domain in the
+      # Coolify UI (service → Domains); the generated value follows it.
+      - SERVICE_URL_QUACKBACK_3000
+      # Same generated value, WITH the scheme (SERVICE_URL_* includes http/https;
+      # SERVICE_FQDN_* is the bare hostname). BASE_URL must be an absolute URL —
+      # the app rejects anything that isn't, and rejects wildcard hosts.
+      - BASE_URL=${SERVICE_URL_QUACKBACK}
+      - PORT=3000
+
+      # --- Required secrets --------------------------------------------------
+      # >= 32 chars, enforced by the config schema. Generated once by Coolify and
+      # then held stable. DO NOT rotate after first boot: it is the HKDF root for
+      # every stored ciphertext (integration credentials, API keys, webhooks).
+      - SECRET_KEY=${SERVICE_BASE64_64_QUACKBACK}
+      # Internal DNS: services in a Coolify stack reach each other by service name.
+      - DATABASE_URL=postgresql://quackback:${SERVICE_PASSWORD_64_POSTGRES}@postgres:5432/quackback
+
+      # --- Behind Coolify's proxy --------------------------------------------
+      # Exactly one hop (Traefik). With 0 the app ignores X-Forwarded-For and
+      # rate-limits every visitor into the proxy's own bucket.
+      - TRUSTED_PROXY_HOPS=1
+      # Set to `poll` only if live chat SSE turns out to be buffered by the proxy.
+      - CHAT_TRANSPORT_MODE=${CHAT_TRANSPORT_MODE:-live}
+
+      # --- Operational (optional, editable in the Coolify UI) ----------------
+      # all | web | worker. Keep `all` for a single container: `web` runs no
+      # background jobs at all, and readiness then reports 503 for `worker`.
+      - QUACKBACK_ROLE=${QUACKBACK_ROLE:-all}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      # Anonymous usage stats are ON unless this is set to true.
+      - DISABLE_TELEMETRY=${DISABLE_TELEMETRY:-}
+      # Demo content (boards, posts, demo@example.com). Leave false on a real
+      # install; the system data every workspace needs is seeded by the migration
+      # step itself, not by this.
+      - SEED_DATABASE=${SEED_DATABASE:-false}
+      # Extra origins Better Auth will accept, comma-separated. BASE_URL is
+      # always trusted; only needed for a second hostname.
+      - TRUSTED_ORIGINS=${TRUSTED_ORIGINS:-}
+
+      # --- Email (optional) --------------------------------------------------
+      # With none of these set, mail is written to the container log instead of
+      # being sent — including the sign-in code for the first admin account.
+      # Priority in the app: SES → SMTP → console.
+      - EMAIL_FROM=${EMAIL_FROM:-}
+      - EMAIL_SMTP_HOST=${EMAIL_SMTP_HOST:-}
+      - EMAIL_SMTP_PORT=${EMAIL_SMTP_PORT:-587}
+      - EMAIL_SMTP_USER=${EMAIL_SMTP_USER:-}
+      - EMAIL_SMTP_PASS=${EMAIL_SMTP_PASS:-}
+      # true for port 465 (implicit TLS); leave empty for STARTTLS on 587.
+      - EMAIL_SMTP_SECURE=${EMAIL_SMTP_SECURE:-}
+
+      # --- AI (optional) -----------------------------------------------------
+      # Any OpenAI-compatible endpoint. BOTH the key and an explicit base URL are
+      # required — there is no implicit provider default. A feature turns on only
+      # when its model resolves.
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+      - AI_CHAT_MODEL=${AI_CHAT_MODEL:-}
+      - AI_EMBEDDING_MODEL=${AI_EMBEDDING_MODEL:-}
+
+      # --- Object storage (optional) -----------------------------------------
+      # Uploads (logos, avatars, changelog and help-centre images) are disabled
+      # unless S3_BUCKET + S3_REGION + S3_ACCESS_KEY_ID + S3_SECRET_ACCESS_KEY
+      # are all set. Nothing else degrades. Fill these in to point at an external
+      # S3/R2/B2 bucket, or uncomment the bundled `minio` services at the bottom
+      # of this file.
+      - S3_ENDPOINT=${S3_ENDPOINT:-}
+      - S3_BUCKET=${S3_BUCKET:-}
+      - S3_REGION=${S3_REGION:-}
+      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-}
+      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-}
+      - S3_FORCE_PATH_STYLE=${S3_FORCE_PATH_STYLE:-}
+      - S3_PUBLIC_URL=${S3_PUBLIC_URL:-}
+      # true serves every object through the app at /api/storage, for a bucket
+      # the browser cannot reach directly.
+      - S3_PROXY=${S3_PROXY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # Traefik only routes to a healthy container, so this gates the domain.
+      # Uses bun (always present in the image) rather than curl/wget, which the
+      # alpine runner stage does not guarantee.
+      test:
+        [
+          'CMD',
+          'bun',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      # First boot applies ~250 migrations and then builds five HNSW/trigram
+      # indexes CONCURRENTLY before the server listens. Failures inside
+      # start_period do not count against `retries`, so this is generous on
+      # purpose — a small VPS can spend several minutes here once.
+      start_period: 600s
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL. pgvector is REQUIRED: the migration runtime issues
+  # `CREATE EXTENSION IF NOT EXISTS vector` and `pg_trgm` before the first
+  # migration, and 0000_initial declares vector columns. Stock `postgres:*` will
+  # not do — pg_trgm ships with contrib, `vector` does not.
+  #
+  # pg17 is what CI migrates and tests against. pg_cron is NOT needed: nothing in
+  # the application reads it (the repo's own compose preloads it only to keep
+  # existing volumes upgradable).
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      - POSTGRES_USER=quackback
+      - POSTGRES_PASSWORD=${SERVICE_PASSWORD_64_POSTGRES}
+      - POSTGRES_DB=quackback
+    volumes:
+      # pg17's PGDATA is /var/lib/postgresql/data. (postgres:18 moved it to
+      # /var/lib/postgresql/18/docker — do not copy this path across a major bump.)
+      - quackback-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # OPTIONAL: bundled object storage.
+  #
+  # The audit found storage is NOT required to boot or to serve — without it the
+  # app runs and only image upload is refused. Uncomment BOTH services below and
+  # set these four on the `quackback` service to turn uploads on:
+  #
+  #   S3_ENDPOINT=http://minio:9000
+  #   S3_BUCKET=quackback
+  #   S3_REGION=us-east-1
+  #   S3_ACCESS_KEY_ID=${SERVICE_USER_MINIO}
+  #   S3_SECRET_ACCESS_KEY=${SERVICE_PASSWORD_64_MINIO}
+  #   S3_FORCE_PATH_STYLE=true
+  #   S3_PROXY=true            # the bucket has no public route; serve via /api/storage
+  #
+  # and add to the app's depends_on:
+  #   minio-init:
+  #     condition: service_completed_successfully
+  #
+  # An external bucket (Cloudflare R2, Backblaze B2, AWS S3) is the lower-effort
+  # option — fill in the S3_* variables in the Coolify UI and skip this entirely.
+  # ---------------------------------------------------------------------------
+  # minio:
+  #   image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+  #   environment:
+  #     - MINIO_ROOT_USER=${SERVICE_USER_MINIO}
+  #     - MINIO_ROOT_PASSWORD=${SERVICE_PASSWORD_64_MINIO}
+  #   command: server /data
+  #   volumes:
+  #     - quackback-minio-data:/data
+  #   healthcheck:
+  #     test: ['CMD', 'mc', 'ready', 'local']
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 10
+  #     start_period: 20s
+  #
+  # # One-shot bucket creator. It exits, so it must be excluded from the stack's
+  # # overall health or Coolify will read the stopped container as unhealthy.
+  # minio-init:
+  #   image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+  #   exclude_from_hc: true
+  #   depends_on:
+  #     minio:
+  #       condition: service_healthy
+  #   environment:
+  #     - MINIO_ROOT_USER=${SERVICE_USER_MINIO}
+  #     - MINIO_ROOT_PASSWORD=${SERVICE_PASSWORD_64_MINIO}
+  #   entrypoint: >
+  #     /bin/sh -c "
+  #     mc alias set local http://minio:9000 \"$$MINIO_ROOT_USER\" \"$$MINIO_ROOT_PASSWORD\" &&
+  #     mc mb --ignore-existing local/quackback
+  #     "
+
+volumes:
+  quackback-postgres-data:
+  # quackback-minio-data:
