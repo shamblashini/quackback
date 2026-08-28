@@ -22,6 +22,7 @@ export const WIDGET_LOCALE_LABELS: Record<string, string> = {
   es: 'Spanish',
   ar: 'Arabic',
   ru: 'Russian',
+  uk: 'Ukrainian',
   'pt-br': 'Portuguese (Brazil)',
   'zh-cn': 'Chinese (Simplified)',
   'zh-tw': 'Chinese (Traditional)',

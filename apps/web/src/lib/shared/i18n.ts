@@ -7,6 +7,7 @@ export const SUPPORTED_LOCALES = [
   'es',
   'ar',
   'ru',
+  'uk',
   'pt-br',
   'zh-cn',
   'zh-tw',

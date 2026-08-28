@@ -36,7 +36,9 @@ const vector = customType<{ data: number[] }>({
  * Locale -> Postgres regconfig for per-locale keyword FTS. Stock Postgres
  * ships no CJK tokenizer, so zh-cn/zh-tw fall back to 'simple' (whitespace/
  * punctuation tokenizing, no stemming) rather than a language-specific
- * config. This is the single source of truth: {@link localeRegconfigCaseSql}
+ * config; there is likewise no built-in 'ukrainian' config, so uk takes the
+ * same 'simple' fallback. This is the single source of truth:
+ * {@link localeRegconfigCaseSql}
  * generates the migration's GENERATED column expression from it, and the
  * help-center search service imports it to build matching tsquery calls.
  */
@@ -47,6 +49,7 @@ export const LOCALE_TO_REGCONFIG: Record<string, string> = {
   es: 'spanish',
   ar: 'arabic',
   ru: 'russian',
+  uk: 'simple',
   'pt-br': 'portuguese',
   'zh-cn': 'simple',
   'zh-tw': 'simple',

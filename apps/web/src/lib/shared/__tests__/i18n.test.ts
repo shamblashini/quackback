@@ -17,6 +17,13 @@ describe('normalizeLocale', () => {
     expect(normalizeLocale('fr-FR')).toBe('fr')
     expect(normalizeLocale('de-AT')).toBe('de')
     expect(normalizeLocale('ru-RU')).toBe('ru')
+    expect(normalizeLocale('uk-UA')).toBe('uk')
+  })
+  it('keeps "uk" (Ukrainian) and "en-GB" (British English) apart', () => {
+    // "uk" is the ISO 639-1 language code for Ukrainian, not a region subtag —
+    // British English arrives as "en-GB" and strips to "en", never to "uk".
+    expect(normalizeLocale('uk')).toBe('uk')
+    expect(normalizeLocale('en-GB')).toBe('en')
   })
   it('returns null for locales without message catalogs', () => {
     expect(normalizeLocale('ja-JP')).toBeNull()
@@ -125,6 +132,9 @@ describe('SUPPORTED_LOCALES', () => {
   })
   it('includes ru', () => {
     expect(SUPPORTED_LOCALES).toContain('ru')
+  })
+  it('includes uk', () => {
+    expect(SUPPORTED_LOCALES).toContain('uk')
   })
   it('includes Simplified and Traditional Chinese', () => {
     expect(SUPPORTED_LOCALES).toContain('zh-cn')
