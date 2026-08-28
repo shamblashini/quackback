@@ -276,6 +276,12 @@ describe('the real corpus', () => {
     // 0269 wraps two WHERE-null-or-empty UPDATEs in a DO block so a stored blob
     // makes the second run write zero rows. A bare UPDATE at the tip would
     // collapse that same window.
+    //
+    // 0270 rewrites a generated column's expression, which Postgres can only do
+    // by dropping and re-adding the column on the versions this project
+    // supports. The guard reads the stored expression, so the rewrite happens
+    // once and a replay finds nothing to do — again, keeping the tip inside the
+    // heal window a bare DROP/ADD pair would have collapsed.
     const vouching = files.filter(
       (f) => assessReplaySafety(f, readFileSync(join(MIGRATIONS_DIR, f), 'utf8')).vouched.length > 0
     )
@@ -286,6 +292,7 @@ describe('the real corpus', () => {
       '0260_channel_threads_conversation_fk.sql',
       '0261_connectors.sql',
       '0269_messenger_ai_default_on.sql',
+      '0270_kb_translations_uk_fts.sql',
     ])
   })
 
