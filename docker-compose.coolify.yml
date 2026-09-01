@@ -107,7 +107,7 @@ services:
       # Wired to the bundled `minio` service at the bottom of this file, which
       # stores uploads (logos, avatars, changelog and help-centre images). To
       # use an external S3/R2/B2 bucket instead, replace these values with the
-      # bucket's and delete the two minio services and their volume.
+      # bucket's and delete the minio service and its volume.
       - S3_ENDPOINT=http://minio:9000
       - S3_BUCKET=quackback
       - S3_REGION=us-east-1
@@ -121,8 +121,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
     healthcheck:
       # Traefik only routes to a healthy container, so this gates the domain.
       # Uses bun (always present in the image) rather than curl/wget, which the
@@ -173,47 +173,49 @@ services:
   # ---------------------------------------------------------------------------
   # Bundled object storage, wired to the S3_* values on the app above. Storage
   # is not required to boot or serve — without it only image upload is refused —
-  # but with these two services uploads work out of the box. The bucket has no
-  # public route; the app serves every object via /api/storage (S3_PROXY=true).
+  # but with this service uploads work out of the box. The bucket has no public
+  # route; the app serves every object via /api/storage (S3_PROXY=true).
+  #
+  # The service creates its own bucket on startup (idempotent) instead of using
+  # a one-shot init container: Coolify applies a restart policy to every
+  # service in a stack, which puts an exiting one-shot into an endless restart
+  # loop that a `service_completed_successfully` condition can never satisfy —
+  # the app would then never start. The healthcheck passes only once the
+  # bucket exists, so the app's `service_healthy` gate means "storage ready".
   #
   # To switch to an external bucket later (Cloudflare R2, Backblaze B2, AWS S3):
-  # point the app's S3_* values at the bucket, drop the minio-init entry from
-  # its depends_on, and delete these two services and the minio volume.
+  # point the app's S3_* values at the bucket, drop the minio entry from its
+  # depends_on, and delete this service and the minio volume.
   # ---------------------------------------------------------------------------
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
     environment:
       - MINIO_ROOT_USER=${SERVICE_USER_MINIO}
       - MINIO_ROOT_PASSWORD=${SERVICE_PASSWORD_64_MINIO}
-    command: server /data
+    # Backgrounds the server, waits until it answers, ensures the bucket, then
+    # waits on the server so its exit code is the container's. `$$` keeps
+    # compose interpolation off what are shell variables.
+    entrypoint: /bin/sh
+    command:
+      - -ec
+      - |
+        minio server /data &
+        pid=$$!
+        trap 'kill -TERM $$pid' TERM INT
+        until mc alias set local http://127.0.0.1:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" >/dev/null 2>&1; do
+          sleep 1
+        done
+        mc mb --ignore-existing local/quackback
+        wait $$pid
     volumes:
       - quackback-minio-data:/data
     healthcheck:
-      test: ['CMD', 'mc', 'ready', 'local']
+      # Healthy only once the bucket exists, not merely once the API answers.
+      test: ['CMD', 'mc', 'ls', 'local/quackback']
       interval: 5s
       timeout: 5s
       retries: 10
-      start_period: 20s
-
-  # One-shot bucket creator. It exits, so it must be excluded from the stack's
-  # overall health or Coolify will read the stopped container as unhealthy.
-  # NOTE: `exclude_from_hc` is a Coolify extension, not compose spec — vanilla
-  # `docker compose` rejects this file because of it. Coolify parses and
-  # regenerates the compose itself, so it only ever runs there anyway.
-  minio-init:
-    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
-    exclude_from_hc: true
-    depends_on:
-      minio:
-        condition: service_healthy
-    environment:
-      - MINIO_ROOT_USER=${SERVICE_USER_MINIO}
-      - MINIO_ROOT_PASSWORD=${SERVICE_PASSWORD_64_MINIO}
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set local http://minio:9000 \"$$MINIO_ROOT_USER\" \"$$MINIO_ROOT_PASSWORD\" &&
-      mc mb --ignore-existing local/quackback
-      "
+      start_period: 30s
 
 volumes:
   quackback-postgres-data:
