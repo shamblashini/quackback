@@ -142,6 +142,25 @@ export function CreateChangelogDialog({
 
   const handleKeyDown = useKeyboardSubmit(handleSubmit)
 
+  // Cmd/Ctrl+Enter submits (handled above); a bare Enter in the single-line
+  // title <input> would otherwise implicitly submit the form before the entry
+  // is finished, so swallow it. The description editor is contenteditable (not
+  // an <input>), so its Enter — a normal paragraph split — is untouched.
+  const handleFormKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      handleKeyDown(e)
+      if (
+        e.key === 'Enter' &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        (e.target as HTMLElement).tagName === 'INPUT'
+      ) {
+        e.preventDefault()
+      }
+    },
+    [handleKeyDown]
+  )
+
   const getSubmitButtonText = () => {
     if (createChangelogMutation.isPending) {
       return publishState.type === 'published' ? 'Publishing...' : 'Saving...'
@@ -165,7 +184,7 @@ export function CreateChangelogDialog({
       )}
       <DialogContent
         className="w-[95vw] sm:w-[90vw] lg:max-w-5xl xl:max-w-6xl h-[85vh] p-0 gap-0 overflow-hidden flex flex-col"
-        onKeyDown={handleKeyDown}
+        onKeyDown={handleFormKeyDown}
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">Create changelog entry</DialogTitle>

@@ -150,6 +150,25 @@ export function ChangelogModalContent({ entryId, onClose }: ChangelogModalConten
 
   const handleKeyDown = useKeyboardSubmit(handleSubmit)
 
+  // Cmd/Ctrl+Enter submits (handled above); a bare Enter in the single-line
+  // title <input> would otherwise implicitly submit the form, so swallow it.
+  // The description editor is contenteditable (not an <input>), so its Enter —
+  // a normal paragraph split — is untouched.
+  const handleFormKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      handleKeyDown(e)
+      if (
+        e.key === 'Enter' &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        (e.target as HTMLElement).tagName === 'INPUT'
+      ) {
+        e.preventDefault()
+      }
+    },
+    [handleKeyDown]
+  )
+
   const getSubmitButtonText = () => {
     if (updateChangelogMutation.isPending) {
       return publishState.type === 'published' ? 'Publishing...' : 'Saving...'
@@ -174,7 +193,7 @@ export function ChangelogModalContent({ entryId, onClose }: ChangelogModalConten
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="flex flex-col h-full">
+      <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="flex flex-col h-full">
         {/* Header */}
         <ModalHeader
           section="Changelog"
