@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import type { RoadmapView } from '@/lib/client/hooks/use-roadmaps-query'
 import type { PostStatusEntity } from '@/lib/shared/db-types'
 import type { BoardId, PostStatusId, PostTagId, RoadmapColumnId, SegmentId } from '@quackback/ids'
@@ -186,7 +185,7 @@ export function RoadmapBuilderForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <ScrollArea className="max-h-[65vh] overflow-hidden -mx-1 px-1">
+      <div className="max-h-[65vh] overflow-y-auto -mx-1 px-1">
         <div className="space-y-5 pe-3">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -397,7 +396,7 @@ export function RoadmapBuilderForm({
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>
