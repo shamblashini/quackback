@@ -28,8 +28,7 @@ function ChangelogSkeleton() {
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="p-4">
             <Skeleton className="h-5 w-16 rounded-full mb-1" />
-            <Skeleton className="h-5 w-3/4 mb-1" />
-            <Skeleton className="h-3 w-full mb-2.5" />
+            <Skeleton className="h-5 w-3/4 mb-2.5" />
             <div className="flex items-center gap-2">
               <Skeleton className="h-3 w-16" />
               <Skeleton className="h-3 w-20" />
