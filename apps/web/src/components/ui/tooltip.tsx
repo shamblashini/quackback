@@ -2,6 +2,7 @@ import * as React from 'react'
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 
 import { cn } from '@/lib/shared/utils'
+import { POPOVER_LAYER } from '@/components/ui/z-index'
 
 function TooltipProvider({
   delayDuration = 0,
@@ -40,7 +41,8 @@ function TooltipContent({
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(
-          'z-50 px-2.5 py-1.5 text-xs font-medium',
+          POPOVER_LAYER,
+          'px-2.5 py-1.5 text-xs font-medium',
           'bg-zinc-900 text-zinc-50 dark:bg-zinc-800 dark:text-zinc-100',
           'rounded-md shadow-md dark:shadow-zinc-950/50',
           'animate-in fade-in-0 zoom-in-95',

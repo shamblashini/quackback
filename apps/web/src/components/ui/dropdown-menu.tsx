@@ -3,6 +3,7 @@ import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
 import { CheckIcon, ChevronRightIcon } from '@heroicons/react/24/solid'
 
 import { cn } from '@/lib/shared/utils'
+import { POPOVER_LAYER } from '@/components/ui/z-index'
 
 function DropdownMenu(props: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
   return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
@@ -30,7 +31,8 @@ function DropdownMenuContent({
       data-slot="dropdown-menu-content"
       sideOffset={sideOffset}
       className={cn(
-        'z-50 min-w-[8rem] overflow-x-hidden overflow-y-auto p-1',
+        POPOVER_LAYER,
+        'min-w-[8rem] overflow-x-hidden overflow-y-auto p-1',
         'max-h-(--radix-dropdown-menu-content-available-height)',
         'origin-(--radix-dropdown-menu-content-transform-origin)',
         'bg-popover text-popover-foreground',
@@ -236,7 +238,8 @@ function DropdownMenuSubContent({
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"
       className={cn(
-        'z-50 min-w-[8rem] overflow-hidden p-1',
+        POPOVER_LAYER,
+        'min-w-[8rem] overflow-hidden p-1',
         'origin-(--radix-dropdown-menu-content-transform-origin)',
         'bg-popover text-popover-foreground',
         'border [border-radius:calc(var(--radius)*0.8)] shadow-lg',
