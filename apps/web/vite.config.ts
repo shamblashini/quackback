@@ -97,6 +97,15 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       tsconfigPaths: true,
+      // The rich-text editor breaks (Enter / paste / list splits throw) when two
+      // copies of the ProseMirror core end up in the bundle, so always resolve
+      // each one to the single root copy.
+      dedupe: [
+        'prosemirror-model',
+        'prosemirror-state',
+        'prosemirror-transform',
+        'prosemirror-view',
+      ],
     },
     plugins: [
       stubServerLoggerInClient(),

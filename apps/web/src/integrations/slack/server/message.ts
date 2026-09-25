@@ -207,7 +207,7 @@ export function buildSlackMessage(event: EventData, rootUrl: string): SlackMessa
 
     case 'changelog.published': {
       const { changelog } = event.data
-      const changelogUrl = `${rootUrl}/changelog`
+      const changelogUrl = `${rootUrl}/changelog/${changelog.id}`
       const content = truncate(stripHtml(changelog.contentPreview || ''), 300)
       const actor = event.actor.displayName || event.actor.email || 'System'
 

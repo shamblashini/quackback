@@ -41,6 +41,8 @@
     "nanoid": "3.3.18",
     "fast-uri": "3.1.5",
     "postcss": "8.5.26",
+    "prosemirror-model": "1.25.11",
+    "prosemirror-view": "1.42.2",
     "fast-xml-builder": "1.1.7",
     "ws": "8.21.0",
     "vite": "8.2.1",

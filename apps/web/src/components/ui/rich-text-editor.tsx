@@ -1260,7 +1260,10 @@ function RichTextEditorBase({
       attributes: {
         class: cn(
           'prose prose-sm prose-neutral dark:prose-invert max-w-none focus:outline-none',
-          'min-h-[var(--editor-min-height)]',
+          // flex-1 lets the editable area grow to fill a flex parent (the
+          // full-height changelog / article composers), so a click anywhere in
+          // the writing pane lands in the editor rather than on dead space.
+          'min-h-[var(--editor-min-height)] flex-1',
           borderless ? 'py-0' : 'px-3 py-2'
         ),
         style: `--editor-min-height: ${minHeight}`,
@@ -1380,6 +1383,20 @@ function RichTextEditorBase({
   // Image context menu state - stores the src of the right-clicked image
   const [contextMenuImageSrc, setContextMenuImageSrc] = useState<string | null>(null)
 
+  // A press on the editor chrome itself (padding, the space under short
+  // content) rather than on the text or toolbar would otherwise leave the
+  // editor unfocused, so typing goes nowhere. Put the caret at the end instead.
+  const handleContainerMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (!editor || disabled || e.button !== 0) return
+      const target = e.target as HTMLElement
+      if (target !== e.currentTarget && !target.hasAttribute('data-editor-content')) return
+      e.preventDefault()
+      editor.commands.focus('end')
+    },
+    [editor, disabled]
+  )
+
   // Handle right-click - check if it's on an image and store the src
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -1460,9 +1477,11 @@ function RichTextEditorBase({
           className={cn(
             !borderless && 'overflow-hidden rounded-md border border-input bg-background',
             disabled && 'opacity-50 cursor-not-allowed',
+            'flex flex-col',
             className
           )}
           onContextMenu={handleContextMenu}
+          onMouseDown={handleContainerMouseDown}
         >
           {toolbarPosition === 'top' && (
             <MenuBar
@@ -1474,7 +1493,7 @@ function RichTextEditorBase({
             />
           )}
 
-          <EditorContent editor={editor} />
+          <EditorContent editor={editor} className="flex flex-1 flex-col" data-editor-content="" />
 
           {toolbarPosition === 'bottom' && (
             <MenuBar

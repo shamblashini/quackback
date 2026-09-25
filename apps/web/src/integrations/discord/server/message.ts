@@ -166,6 +166,26 @@ export function buildDiscordMessage(event: EventData, rootUrl: string): DiscordM
       }
     }
 
+    case 'changelog.published': {
+      const { changelog } = event.data
+      const changelogUrl = `${rootUrl}/changelog/${changelog.id}`
+
+      // Plain content carries the title and link too, so the announcement still
+      // reads (and unfurls) in clients or channels that hide embeds.
+      return {
+        content: `📢 **${truncate(changelog.title, 200)}**\n${changelogUrl}`,
+        embeds: [
+          {
+            title: truncate(changelog.title, 256),
+            url: changelogUrl,
+            color: COLORS.green,
+            author: { name: '📢 New changelog entry' },
+            timestamp: changelog.publishedAt,
+          },
+        ],
+      }
+    }
+
     default:
       return { content: `Quackback event: ${(event as EventData).type}` }
   }

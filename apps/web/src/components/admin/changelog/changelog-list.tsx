@@ -189,7 +189,6 @@ export function ChangelogList() {
                     <ChangelogListItem
                       id={entry.id}
                       title={entry.title}
-                      content={entry.content}
                       status={entry.status}
                       publishedAt={entry.publishedAt}
                       displayDate={entry.displayDate}

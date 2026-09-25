@@ -305,7 +305,16 @@ export function CategoryFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        // Radix focuses the first tabbable element, which is the icon picker
+        // button. Typing a name then goes nowhere and the first space opens the
+        // picker, so start in the name field instead.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault()
+          document.getElementById('category-name')?.focus()
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit category' : 'New category'}</DialogTitle>
           <DialogDescription>
@@ -327,6 +336,7 @@ export function CategoryFormDialog({
                 <PopoverTrigger asChild>
                   <button
                     type="button"
+                    aria-label="Choose icon"
                     className="h-9 w-9 rounded-md border border-border/50 flex items-center justify-center hover:bg-muted transition-colors shrink-0"
                   >
                     <CategoryIcon icon={icon} className="w-5 h-5" />

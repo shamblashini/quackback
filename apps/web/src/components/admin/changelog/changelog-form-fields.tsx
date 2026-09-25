@@ -33,14 +33,14 @@ export function ChangelogFormFields({
         control={form.control}
         name="content"
         render={() => (
-          <FormItem className="flex-1 min-h-0">
+          <FormItem className="flex flex-1 flex-col min-h-0">
             <FormControl>
               <RichTextEditor
                 value={contentJson || ''}
                 onChange={onContentChange}
                 placeholder="Share the details of your update..."
-                minHeight="100%"
-                className="h-full"
+                minHeight="240px"
+                className="flex-1"
                 borderless
                 toolbarPosition="bottom"
                 features={{
