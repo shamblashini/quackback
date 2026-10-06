@@ -1385,3 +1385,44 @@ describe('canCreatePost — service principal + submit-tier edges', () => {
     expect(free).toEqual({ allowed: true, requiresApproval: false })
   })
 })
+
+describe('canCreateComment — report boards force the author-only policy', () => {
+  // A report board's thread is always reporter <-> team, whatever the stored
+  // replyPolicy switch says, so the transparency guarantee can't be undone by
+  // a stale or hand-edited access row.
+  const OTHER = 'p_other' as PrincipalId
+  const reportBoard = (overrides: Partial<BoardAccess> = {}): { access: BoardAccess } => ({
+    access: { ...mkAccess('anonymous'), kind: 'reports', ...overrides },
+  })
+  const post = (principalId: PrincipalId | null) => ({
+    moderationState: 'published' as ModerationState,
+    principalId,
+    isCommentsLocked: false,
+  })
+
+  it('the reporter can reply on their own report', () => {
+    expect(canCreateComment(portal, post(portal.principalId), reportBoard(), 'none').allowed).toBe(
+      true
+    )
+  })
+
+  it('another member cannot reply, even with replyPolicy explicitly anyone', () => {
+    const d = canCreateComment(portal, post(OTHER), reportBoard({ replyPolicy: 'anyone' }), 'none')
+    expect(d.allowed).toBe(false)
+    if (!d.allowed) expect(d.reason).toMatch(/only the post author and team/i)
+  })
+
+  it('the team replies on any report', () => {
+    expect(canCreateComment(admin, post(OTHER), reportBoard(), 'none').allowed).toBe(true)
+    expect(canCreateComment(member, post(OTHER), reportBoard(), 'none').allowed).toBe(true)
+  })
+
+  it('everyone the view tier admits can still read the report', () => {
+    expect(canViewPost(anon, post(OTHER), reportBoard()).allowed).toBe(true)
+  })
+
+  it("kind 'feedback' leaves the reply rule to replyPolicy", () => {
+    const feedback = reportBoard({ kind: 'feedback' })
+    expect(canCreateComment(portal, post(OTHER), feedback, 'none').allowed).toBe(true)
+  })
+})

@@ -1171,5 +1171,20 @@
   "automation.builtinTools.default": "За замовчуванням",
   "automation.builtinTools.saving": "Збереження…",
   "automation.builtinTools.saveError": "Не вдалося оновити дозволи інструментів.",
-  "automation.builtinTools.loadError": "Не вдалося завантажити каталог інструментів."
+  "automation.builtinTools.loadError": "Не вдалося завантажити каталог інструментів.",
+  "portal.header.nav.reports": "Скарги",
+  "portal.reports.title": "Скарги",
+  "portal.reports.subtitle": "Повідомте модераторам про проблему та обговоріть її з ними.",
+  "portal.reports.transparencyNote": "Кожна скарга та відповіді команди публічні, тож уся спільнота бачить, як її розглянули. Відповідати можуть лише автор скарги та команда.",
+  "portal.reports.filterAll": "Усі",
+  "portal.reports.empty": "Скарг ще немає.",
+  "portal.reports.emptyFiltered": "Немає скарг із цим статусом.",
+  "portal.reports.loadMore": "Показати ще",
+  "portal.reports.anonymous": "Анонім",
+  "portal.reports.replies": "{count, plural, one {# відповідь} few {# відповіді} many {# відповідей} other {# відповіді}}",
+  "portal.reports.composer.errorSignIn": "Увійдіть, щоб подати скаргу",
+  "portal.reports.composer.toastSubmitted": "Скаргу подано",
+  "portal.reports.composer.titlePlaceholder": "Про що ви хочете повідомити?",
+  "portal.reports.composer.titleLabel": "Заголовок скарги",
+  "portal.reports.composer.detailsPlaceholder": "Опишіть, що сталося, додайте посилання чи знімки екрана. Скарги публічні."
 }

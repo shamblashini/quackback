@@ -7,7 +7,7 @@ import {
 } from '@/lib/server/functions/portal'
 import { getVoteSidebarDataFn, getVotedPostsFn } from '@/lib/server/functions/public-posts'
 import type { CommentReactionCount, CommentStatusChange } from '@/lib/shared'
-import type { ReplyPolicy, TiptapContent } from '@/lib/shared/db-types'
+import type { BoardKind, ReplyPolicy, TiptapContent } from '@/lib/shared/db-types'
 
 /**
  * Comment type for client components (Date fields may be strings after serialization)
@@ -98,6 +98,9 @@ export interface PublicPostDetailView {
    * Undefined on legacy/cached payloads — treat undefined as `'anyone'`.
    */
   replyPolicy?: ReplyPolicy
+  /** The board's purpose. Undefined on legacy/cached payloads — treat as
+   *  `'feedback'`. A `'reports'` board's posts link back to /reports. */
+  boardKind?: BoardKind
   /** Merge/deduplication: info about canonical post if this is a merged duplicate */
   mergeInfo?: {
     canonicalPostId: string

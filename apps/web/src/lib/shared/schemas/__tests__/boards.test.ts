@@ -50,6 +50,11 @@ describe('normalizeBoardAccess', () => {
     expect(a.replyPolicy).toBe('author-only')
   })
 
+  it('preserves an explicit kind and never injects one', () => {
+    expect(normalizeBoardAccess({ view: 'anonymous', kind: 'reports' }).kind).toBe('reports')
+    expect('kind' in normalizeBoardAccess({ view: 'anonymous' })).toBe(false)
+  })
+
   it('never INJECTS replyPolicy — an absent key already means anyone', () => {
     // The key must stay absent so a normalized legacy row still deep-equals
     // DEFAULT_BOARD_ACCESS, whose literal is byte-pinned to migration 0083.

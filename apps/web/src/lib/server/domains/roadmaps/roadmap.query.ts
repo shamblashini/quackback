@@ -19,7 +19,13 @@ import {
 } from '@/lib/server/db'
 import { type RoadmapId } from '@quackback/ids'
 import { NotFoundError, ValidationError } from '@/lib/shared/errors'
-import { ANONYMOUS_ACTOR, boardViewFilter, canViewRoadmap, type Actor } from '@/lib/server/policy'
+import {
+  ANONYMOUS_ACTOR,
+  boardViewFilter,
+  canViewRoadmap,
+  type Actor,
+  boardKindCondition,
+} from '@/lib/server/policy'
 import {
   parseRoadmapDateBucket,
   roadmapBaseFilterSchema,
@@ -143,7 +149,12 @@ async function queryRoadmapPosts(
   publicActor?: Actor
 ): Promise<RoadmapPostsListResult> {
   const { limit = 20, offset = 0 } = options
-  const conditions: SQL[] = [isNull(posts.deletedAt), isNull(posts.canonicalPostId)]
+  // Report boards never feed a roadmap: their statuses track moderation, not delivery.
+  const conditions: SQL[] = [
+    isNull(posts.deletedAt),
+    isNull(posts.canonicalPostId),
+    boardKindCondition('feedback'),
+  ]
   if (publicActor) {
     conditions.push(eq(posts.moderationState, 'published'), boardViewFilter(publicActor))
   } else {
@@ -215,7 +226,12 @@ async function dateBucketsFor(roadmapId: RoadmapId, actor?: Actor): Promise<Road
     throw new NotFoundError('ROADMAP_NOT_FOUND', `Roadmap with ID ${roadmapId} not found`)
   }
 
-  const conditions: SQL[] = [isNull(posts.deletedAt), isNull(posts.canonicalPostId)]
+  // Report boards never feed a roadmap: their statuses track moderation, not delivery.
+  const conditions: SQL[] = [
+    isNull(posts.deletedAt),
+    isNull(posts.canonicalPostId),
+    boardKindCondition('feedback'),
+  ]
   if (actor) {
     conditions.push(eq(posts.moderationState, 'published'), boardViewFilter(actor))
   } else {

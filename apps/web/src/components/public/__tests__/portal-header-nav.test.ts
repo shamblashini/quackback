@@ -62,6 +62,23 @@ describe('resolvePortalNavItems (no config = legacy defaults)', () => {
   })
 })
 
+describe('resolvePortalNavItems (reports tab)', () => {
+  it('stays hidden until the viewer can see a report board', () => {
+    expect(paths(resolvePortalNavItems(gates()))).not.toContain('/reports')
+    expect(paths(resolvePortalNavItems(gates({ reports: true })))).toEqual([
+      '/',
+      '/roadmap',
+      '/changelog',
+      '/reports',
+    ])
+  })
+
+  it('is appended to a saved nav config that predates it', () => {
+    const nav: PortalNavConfig = { items: [{ id: 'feedback', type: 'feedback' }] }
+    expect(paths(resolvePortalNavItems(gates({ reports: true }), nav))).toContain('/reports')
+  })
+})
+
 describe('resolvePortalNavItems (configured)', () => {
   const reordered: PortalNavConfig = {
     items: [
@@ -193,6 +210,7 @@ describe('seedNavEditorItems', () => {
       'help',
       'support',
       'status',
+      'reports',
     ])
   })
 
@@ -212,6 +230,7 @@ describe('seedNavEditorItems', () => {
       'help',
       'support',
       'status',
+      'reports',
     ])
   })
 

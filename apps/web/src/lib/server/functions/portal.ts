@@ -13,7 +13,7 @@ import {
 import type { BoardSettings, BoardAccess } from '@/lib/server/db'
 // Pure helper + its type, imported through the client-safe re-export so suites
 // that mock '@/lib/server/db' don't have to stub them.
-import { resolveReplyPolicy, type ReplyPolicy } from '@/lib/shared/db-types'
+import { resolveBoardKind, resolveReplyPolicy, type ReplyPolicy } from '@/lib/shared/db-types'
 import type { Actor } from '@/lib/server/policy'
 import {
   getOptionalAuth,
@@ -93,7 +93,7 @@ const fetchPortalDataSchema = z.object({
  * caller passes `allowAnonymous` (and the boards) so it can parallelize the
  * settings read with its own queries.
  */
-async function buildBoardPermissions(
+export async function buildBoardPermissions(
   actor: Actor,
   boards: ReadonlyArray<{ id: string; access: BoardAccess }>,
   allowAnonymous: boolean
@@ -115,7 +115,7 @@ async function buildBoardPermissions(
  * what the server permits (#191). Existing workspaces carry an explicit value from
  * migration 0084.
  */
-async function loadAllowAnonymous(): Promise<boolean> {
+export async function loadAllowAnonymous(): Promise<boolean> {
   const { getSettings } = await import('./workspace')
   const { workspaceAllowsAnonymous } = await import('@/lib/server/domains/settings/settings.types')
   const settings = await getSettings()
@@ -420,6 +420,9 @@ export const fetchPublicPostDetail = createServerFn({ method: 'GET' })
       // the generic no-access notice. Safe to expose: it is a public property of
       // the board, unlike the access matrix stripped above.
       replyPolicy: resolveReplyPolicy(result.boardAccess),
+      // A report board's posts link back to the portal's reports page rather
+      // than the feedback feed. Public, like replyPolicy.
+      boardKind: resolveBoardKind(result.boardAccess),
     }
   })
 

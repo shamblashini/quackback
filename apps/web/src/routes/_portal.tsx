@@ -35,6 +35,8 @@ import { resolveInstantSsoRedirectFn } from '@/lib/server/functions/instant-sso'
 import { useBrandingFont } from '@/lib/client/hooks/use-branding-font'
 import { usePreviewDraft } from '@/components/public/preview-draft-context'
 import { resolvePortalOgImageUrl } from '@/lib/shared/portal-og-image'
+import { isProductEnabled } from '@/lib/shared/types/settings'
+import { reportsQueries } from '@/lib/client/queries/reports'
 
 /**
  * Portal documents may be framed same-origin only — the admin Branding page
@@ -210,7 +212,16 @@ export const Route = createFileRoute('/_portal')({
     // gating; the server still enforces every mutation) and only for team
     // roles — end users and visitors skip the RPC entirely. Both were already
     // started above, in parallel with the access check.
-    const [avatarData, permissionKeys] = await Promise.all([avatarPromise, permissionKeysPromise])
+    // The header's Reports tab is gated on whether the viewer can see a report
+    // board. Resolved here so SSR renders the tab instead of popping it in.
+    const reportsGatePromise = isProductEnabled(settings?.featureFlags, 'feedback')
+      ? context.queryClient.ensureQueryData(reportsQueries.hasReportBoards()).catch(() => false)
+      : Promise.resolve(false)
+    const [avatarData, permissionKeys, hasReportBoards] = await Promise.all([
+      avatarPromise,
+      permissionKeysPromise,
+      reportsGatePromise,
+    ])
 
     const brandingData = settings?.brandingData ?? null
     const faviconData = settings?.faviconData ?? null
@@ -266,6 +277,7 @@ export const Route = createFileRoute('/_portal')({
       messages,
       prompt,
       permissionKeys,
+      hasReportBoards,
       gate: null,
     }
   },
@@ -349,6 +361,7 @@ function PortalLayout() {
     messages,
     prompt,
     permissionKeys,
+    hasReportBoards,
   } = loaderData
 
   // session + redacted settings live on the root context (dehydrated once in
@@ -388,6 +401,7 @@ function PortalLayout() {
                 // The toggle is inert under a forced theme, and the preview
                 // always forces one — hide it there.
                 showThemeToggle={themeMode === 'user' && !preview}
+                hasReportBoards={hasReportBoards}
               />
               <main className="flex-1 w-full flex flex-col">
                 <Outlet />

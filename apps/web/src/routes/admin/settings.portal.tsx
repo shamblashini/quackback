@@ -242,6 +242,9 @@ function PortalPage() {
       status:
         isStatusPagePublished(flags, settings?.statusConfig) &&
         (statusAudience === 'public' || statusLoggedIn),
+      // The portal also needs a report board to exist; that is per-board
+      // state, so the editor only mirrors the product gate.
+      reports: isProductEnabled(flags, 'feedback'),
     }
     return new Set(
       (Object.keys(gates) as PortalBuiltInNavType[]).filter((type) => !gates[type])

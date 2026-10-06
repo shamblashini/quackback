@@ -13,9 +13,33 @@ import { NotFoundError } from '@/lib/shared/errors'
 import { isTeamMember, Role } from '@/lib/shared/roles'
 import { DEFAULT_PORTAL_CONFIG, type PortalConfig } from '@/lib/server/domains/settings'
 import type { PermissionCheckResult } from './post.types'
+import { isReportBoard } from '@/lib/shared/db-types'
 import { logger } from '@/lib/server/logger'
 
 const log = logger.child({ component: 'post-permissions' })
+
+export const REPORT_DELETE_DENIED = 'Reports stay public for transparency and cannot be deleted'
+
+/**
+ * The author-facing engagement rules for a post, tightened on a report board:
+ * a report is a public record, so its author can never delete it and can only
+ * edit it before the team has engaged, whatever the workspace allows on
+ * feedback boards. Team members are unaffected (callers bypass before this).
+ */
+export function authorPostRules(
+  features: Pick<
+    PortalConfig['features'],
+    'allowEditAfterEngagement' | 'allowDeleteAfterEngagement'
+  >,
+  board: { access?: unknown } | null | undefined
+): { allowEditAfterEngagement: boolean; allowDeleteAfterEngagement: boolean; canDelete: boolean } {
+  const report = isReportBoard(board as Parameters<typeof isReportBoard>[0])
+  return {
+    allowEditAfterEngagement: report ? false : features.allowEditAfterEngagement,
+    allowDeleteAfterEngagement: report ? false : features.allowDeleteAfterEngagement,
+    canDelete: !report,
+  }
+}
 
 // ============================================================================
 // Permission Checks
@@ -41,6 +65,7 @@ export async function canEditPost(
   // Get the post
   const post = await db.query.posts.findFirst({
     where: eq(posts.id, postId),
+    with: { board: { columns: { access: true } } },
   })
 
   if (!post) {
@@ -64,15 +89,16 @@ export async function canEditPost(
 
   // Get portal config if not provided
   const config = portalConfig ?? (await getPortalConfig())
+  const rules = authorPostRules(config.features, post.board)
 
   // Check if status is default (Open)
   const isDefault = await isDefaultStatus(post.statusId)
-  if (!isDefault && !config.features.allowEditAfterEngagement) {
+  if (!isDefault && !rules.allowEditAfterEngagement) {
     return { allowed: false, reason: 'Cannot edit posts that have been reviewed by the team' }
   }
 
   // Check for engagement (votes, comments from others)
-  if (!config.features.allowEditAfterEngagement) {
+  if (!rules.allowEditAfterEngagement) {
     if (post.voteCount > 0) {
       return { allowed: false, reason: 'Cannot edit posts that have received votes' }
     }
@@ -109,6 +135,7 @@ export async function canDeletePost(
   // Get the post
   const post = await db.query.posts.findFirst({
     where: eq(posts.id, postId),
+    with: { board: { columns: { access: true } } },
   })
 
   if (!post) {
@@ -132,10 +159,14 @@ export async function canDeletePost(
 
   // Get portal config if not provided
   const config = portalConfig ?? (await getPortalConfig())
+  const rules = authorPostRules(config.features, post.board)
+  if (!rules.canDelete) {
+    return { allowed: false, reason: REPORT_DELETE_DENIED }
+  }
 
   // Check if status is default (Open)
   const isDefault = await isDefaultStatus(post.statusId)
-  if (!isDefault && !config.features.allowDeleteAfterEngagement) {
+  if (!isDefault && !rules.allowDeleteAfterEngagement) {
     return {
       allowed: false,
       reason: 'Cannot delete posts that have been reviewed by the team',
@@ -143,7 +174,7 @@ export async function canDeletePost(
   }
 
   // Check for engagement (votes, comments)
-  if (!config.features.allowDeleteAfterEngagement) {
+  if (!rules.allowDeleteAfterEngagement) {
     if (post.voteCount > 0) {
       return { allowed: false, reason: 'Cannot delete posts that have received votes' }
     }
@@ -181,7 +212,10 @@ export async function getPostPermissions(
   // Get the post with status in single query (eliminates separate isDefaultStatus query)
   const post = await db.query.posts.findFirst({
     where: eq(posts.id, postId),
-    with: { postStatus: { columns: { isDefault: true } } },
+    with: {
+      postStatus: { columns: { isDefault: true } },
+      board: { columns: { access: true } },
+    },
   })
 
   if (!post) {
@@ -214,6 +248,7 @@ export async function getPostPermissions(
 
   // Get portal config once for both checks
   const config = await getPortalConfig()
+  const rules = authorPostRules(config.features, post.board)
 
   // Status is default if no statusId or the status has isDefault=true
   const isDefault = !post.statusId || post.postStatus?.isDefault === true
@@ -223,12 +258,12 @@ export async function getPostPermissions(
   let canDelete: PermissionCheckResult = { allowed: true }
 
   // Status check for edit
-  if (!isDefault && !config.features.allowEditAfterEngagement) {
+  if (!isDefault && !rules.allowEditAfterEngagement) {
     canEdit = { allowed: false, reason: 'Cannot edit posts that have been reviewed by the team' }
   }
 
   // Status check for delete
-  if (!isDefault && !config.features.allowDeleteAfterEngagement) {
+  if (!isDefault && !rules.allowDeleteAfterEngagement) {
     canDelete = {
       allowed: false,
       reason: 'Cannot delete posts that have been reviewed by the team',
@@ -237,17 +272,22 @@ export async function getPostPermissions(
 
   // Vote check affects both (if still allowed)
   if (post.voteCount > 0) {
-    if (canEdit.allowed && !config.features.allowEditAfterEngagement) {
+    if (canEdit.allowed && !rules.allowEditAfterEngagement) {
       canEdit = { allowed: false, reason: 'Cannot edit posts that have received votes' }
     }
-    if (canDelete.allowed && !config.features.allowDeleteAfterEngagement) {
+    if (canDelete.allowed && !rules.allowDeleteAfterEngagement) {
       canDelete = { allowed: false, reason: 'Cannot delete posts that have received votes' }
     }
   }
 
+  // Report boards: the record stays public, so its author can't remove it.
+  if (!rules.canDelete) {
+    canDelete = { allowed: false, reason: REPORT_DELETE_DENIED }
+  }
+
   // Comment checks - use combined query if either check is needed
-  const needsEditCommentCheck = canEdit.allowed && !config.features.allowEditAfterEngagement
-  const needsDeleteCommentCheck = canDelete.allowed && !config.features.allowDeleteAfterEngagement
+  const needsEditCommentCheck = canEdit.allowed && !rules.allowEditAfterEngagement
+  const needsDeleteCommentCheck = canDelete.allowed && !rules.allowDeleteAfterEngagement
 
   if (needsEditCommentCheck || needsDeleteCommentCheck) {
     // Single query to get both total count and other-user comment count

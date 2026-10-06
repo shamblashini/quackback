@@ -33,6 +33,7 @@ import { contentHoldReason } from '@/lib/server/content/content-holds'
 import { recordAuditEvent } from '@/lib/server/audit/log'
 import { logger } from '@/lib/server/logger'
 import { recalculateCanonicalVoteCount } from './post.merge-ids'
+import { authorPostRules, REPORT_DELETE_DENIED } from './post.permissions'
 
 const log = logger.child({ component: 'post-user-actions' })
 
@@ -128,7 +129,10 @@ export async function userEditPost(
   const [existingPost, config] = await Promise.all([
     db.query.posts.findFirst({
       where: eq(posts.id, postId),
-      with: { postStatus: { columns: { isDefault: true } } },
+      with: {
+        postStatus: { columns: { isDefault: true } },
+        board: { columns: { access: true } },
+      },
     }),
     getPortalConfig(),
   ])
@@ -149,8 +153,8 @@ export async function userEditPost(
       throw new ForbiddenError('EDIT_NOT_ALLOWED', 'You can only edit your own posts')
     }
 
-    // Check engagement restrictions for regular users
-    if (!config.features.allowEditAfterEngagement) {
+    // Check engagement restrictions for regular users (stricter on report boards)
+    if (!authorPostRules(config.features, existingPost.board).allowEditAfterEngagement) {
       // Status is default if no statusId or the status has isDefault=true
       const isDefault = !existingPost.statusId || existingPost.postStatus?.isDefault === true
       if (!isDefault) {
@@ -252,7 +256,10 @@ export async function softDeletePost(
   const [existingPost, config] = await Promise.all([
     db.query.posts.findFirst({
       where: eq(posts.id, postId),
-      with: { postStatus: { columns: { isDefault: true } } },
+      with: {
+        postStatus: { columns: { isDefault: true } },
+        board: { columns: { access: true } },
+      },
     }),
     getPortalConfig(),
   ])
@@ -273,8 +280,14 @@ export async function softDeletePost(
       throw new ForbiddenError('DELETE_NOT_ALLOWED', 'You can only delete your own posts')
     }
 
+    // A report is a public record: its author can never take it down.
+    const rules = authorPostRules(config.features, existingPost.board)
+    if (!rules.canDelete) {
+      throw new ForbiddenError('DELETE_NOT_ALLOWED', REPORT_DELETE_DENIED)
+    }
+
     // Check engagement restrictions for regular users
-    if (!config.features.allowDeleteAfterEngagement) {
+    if (!rules.allowDeleteAfterEngagement) {
       // Status is default if no statusId or the status has isDefault=true
       const isDefault = !existingPost.statusId || existingPost.postStatus?.isDefault === true
       if (!isDefault) {

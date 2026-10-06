@@ -32,6 +32,7 @@ const BUILT_IN_NAV_ITEMS: Record<PortalBuiltInNavType, BuiltInNavDefinition> = {
   help: { to: '/hc', messageId: 'portal.header.nav.help', defaultMessage: 'Help Center' },
   support: { to: '/support', messageId: 'portal.header.nav.support', defaultMessage: 'Support' },
   status: { to: '/status', messageId: 'portal.header.nav.status', defaultMessage: 'Status' },
+  reports: { to: '/reports', messageId: 'portal.header.nav.reports', defaultMessage: 'Reports' },
 }
 
 /** Default order, matching the nav before it became configurable. */
@@ -42,6 +43,7 @@ export const DEFAULT_NAV_ORDER: readonly PortalBuiltInNavType[] = [
   'help',
   'support',
   'status',
+  'reports',
 ]
 
 /**
@@ -57,6 +59,9 @@ export interface PortalNavGates {
   help: boolean
   support: boolean
   status: boolean
+  /** Optional: only the live portal header knows whether the viewer can see a
+   *  report board. Absent reads as off. */
+  reports?: boolean
 }
 
 /** A nav item resolved for rendering. */

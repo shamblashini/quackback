@@ -112,6 +112,13 @@ describe('boardCapabilitiesForActor', () => {
     })
   })
 
+  it('ignores the report-board kind too — it only forces the per-post reply rule', () => {
+    const reports = makeAccess({ kind: 'reports' })
+    expect(boardCapabilitiesForActor(USER, reports, true)).toEqual(
+      boardCapabilitiesForActor(USER, makeAccess(), true)
+    )
+  })
+
   it('gates submit, vote and comment independently per tier', () => {
     // Vote open to anon, comment requires sign-in, submit requires sign-in.
     const access = makeAccess({
@@ -139,6 +146,15 @@ const publishedBy = (principalId: Actor['principalId']) => ({
 })
 
 describe('canCommentOnPost', () => {
+  it('report board: only the reporter and the team may reply', () => {
+    const reports = makeAccess({ kind: 'reports' })
+    const mine = { moderationState: 'published' as const, principalId: USER.principalId }
+    const theirs = { moderationState: 'published' as const, principalId: TEAM.principalId }
+    expect(canCommentOnPost(USER, mine, reports, true)).toBe(true)
+    expect(canCommentOnPost(USER, theirs, reports, true)).toBe(false)
+    expect(canCommentOnPost(TEAM, mine, reports, true)).toBe(true)
+  })
+
   it('matches the board capability on a board with no reply policy', () => {
     expect(canCommentOnPost(USER, publishedBy(OTHER_AUTHOR), makeAccess(), true)).toBe(
       boardCapabilitiesForActor(USER, makeAccess(), true).canComment

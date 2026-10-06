@@ -5,7 +5,7 @@
  * queries and single-row reads use the same predicate.
  */
 import { sql, isNull, type SQL } from 'drizzle-orm'
-import { boards, type BoardAccess, type AccessTier } from '@/lib/server/db'
+import { boards, type BoardAccess, type AccessTier, type BoardKind } from '@/lib/server/db'
 import { allowDecision, denyDecision, isTeamActor, type Actor, type Decision } from './types'
 import { tierAllows } from './access'
 import { normalizeBoardAccess } from '@/lib/shared/schemas/boards'
@@ -86,4 +86,17 @@ export function boardViewFilter(actor: Actor): SQL {
       )
     )
   `
+}
+
+/**
+ * SQL predicate for a board's purpose (`access.kind`, see BOARD_KINDS).
+ *
+ * The key is optional and absent on every feedback board, so the predicate
+ * coalesces to `'feedback'` rather than comparing the raw jsonb value. Report
+ * boards are kept out of the feedback surfaces (portal feed, board list,
+ * roadmaps) and listed only on the portal's reports page.
+ */
+export function boardKindCondition(kind: BoardKind): SQL {
+  const stored = sql`coalesce(${boards.access}->>'kind', 'feedback')`
+  return kind === 'reports' ? sql`${stored} = 'reports'` : sql`${stored} <> 'reports'`
 }

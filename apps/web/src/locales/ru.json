@@ -1171,5 +1171,20 @@
   "automation.builtinTools.default": "По умолчанию",
   "automation.builtinTools.saving": "Сохранение…",
   "automation.builtinTools.saveError": "Не удалось обновить разрешения инструментов.",
-  "automation.builtinTools.loadError": "Не удалось загрузить каталог инструментов."
+  "automation.builtinTools.loadError": "Не удалось загрузить каталог инструментов.",
+  "portal.header.nav.reports": "Жалобы",
+  "portal.reports.title": "Жалобы",
+  "portal.reports.subtitle": "Сообщите модераторам о проблеме и обсудите её с ними.",
+  "portal.reports.transparencyNote": "Каждая жалоба и ответы команды публичны, поэтому всё сообщество видит, как её рассмотрели. Отвечать могут только автор жалобы и команда.",
+  "portal.reports.filterAll": "Все",
+  "portal.reports.empty": "Жалоб пока нет.",
+  "portal.reports.emptyFiltered": "Нет жалоб с этим статусом.",
+  "portal.reports.loadMore": "Показать ещё",
+  "portal.reports.anonymous": "Аноним",
+  "portal.reports.replies": "{count, plural, one {# ответ} few {# ответа} many {# ответов} other {# ответа}}",
+  "portal.reports.composer.errorSignIn": "Войдите, чтобы подать жалобу",
+  "portal.reports.composer.toastSubmitted": "Жалоба отправлена",
+  "portal.reports.composer.titlePlaceholder": "О чём вы хотите сообщить?",
+  "portal.reports.composer.titleLabel": "Заголовок жалобы",
+  "portal.reports.composer.detailsPlaceholder": "Опишите, что произошло, добавьте ссылки или скриншоты. Жалобы публичны."
 }

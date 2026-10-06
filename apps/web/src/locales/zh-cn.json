@@ -1171,5 +1171,20 @@
   "automation.builtinTools.default": "默认",
   "automation.builtinTools.saving": "保存中…",
   "automation.builtinTools.saveError": "无法更新工具权限。",
-  "automation.builtinTools.loadError": "无法加载工具目录。"
+  "automation.builtinTools.loadError": "无法加载工具目录。",
+  "portal.header.nav.reports": "举报",
+  "portal.reports.title": "举报",
+  "portal.reports.subtitle": "向管理团队举报问题，并与他们沟通处理。",
+  "portal.reports.transparencyNote": "每条举报及团队的回复都是公开的，整个社区都能看到它是如何处理的。只有举报人和团队可以回复。",
+  "portal.reports.filterAll": "全部",
+  "portal.reports.empty": "暂无举报。",
+  "portal.reports.emptyFiltered": "没有此状态的举报。",
+  "portal.reports.loadMore": "加载更多",
+  "portal.reports.anonymous": "匿名",
+  "portal.reports.replies": "{count, plural, other {# 条回复}}",
+  "portal.reports.composer.errorSignIn": "请登录后提交举报",
+  "portal.reports.composer.toastSubmitted": "举报已提交",
+  "portal.reports.composer.titlePlaceholder": "你想举报什么？",
+  "portal.reports.composer.titleLabel": "举报标题",
+  "portal.reports.composer.detailsPlaceholder": "描述发生了什么，可附上链接或截图。举报内容是公开的。"
 }

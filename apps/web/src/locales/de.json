@@ -1171,5 +1171,20 @@
   "automation.builtinTools.default": "Standard",
   "automation.builtinTools.saving": "Wird gespeichert…",
   "automation.builtinTools.saveError": "Werkzeugberechtigungen konnten nicht aktualisiert werden.",
-  "automation.builtinTools.loadError": "Werkzeugkatalog konnte nicht geladen werden."
+  "automation.builtinTools.loadError": "Werkzeugkatalog konnte nicht geladen werden.",
+  "portal.header.nav.reports": "Meldungen",
+  "portal.reports.title": "Meldungen",
+  "portal.reports.subtitle": "Melde dem Moderationsteam ein Problem und besprich es mit ihm.",
+  "portal.reports.transparencyNote": "Jede Meldung und die Antworten des Teams sind öffentlich, damit die ganze Community sieht, wie sie bearbeitet wurde. Nur die meldende Person und das Team können antworten.",
+  "portal.reports.filterAll": "Alle",
+  "portal.reports.empty": "Noch keine Meldungen.",
+  "portal.reports.emptyFiltered": "Keine Meldungen mit diesem Status.",
+  "portal.reports.loadMore": "Mehr laden",
+  "portal.reports.anonymous": "Anonym",
+  "portal.reports.replies": "{count, plural, one {# Antwort} other {# Antworten}}",
+  "portal.reports.composer.errorSignIn": "Bitte melde dich an, um eine Meldung einzureichen",
+  "portal.reports.composer.toastSubmitted": "Meldung eingereicht",
+  "portal.reports.composer.titlePlaceholder": "Was möchtest du melden?",
+  "portal.reports.composer.titleLabel": "Titel der Meldung",
+  "portal.reports.composer.detailsPlaceholder": "Beschreibe, was passiert ist, mit Links oder Screenshots. Meldungen sind öffentlich."
 }

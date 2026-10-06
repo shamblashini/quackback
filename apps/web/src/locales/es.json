@@ -1171,5 +1171,20 @@
   "automation.builtinTools.default": "Predeterminado",
   "automation.builtinTools.saving": "Guardando…",
   "automation.builtinTools.saveError": "No se pudieron actualizar los permisos de la herramienta.",
-  "automation.builtinTools.loadError": "No se pudo cargar el catálogo de herramientas."
+  "automation.builtinTools.loadError": "No se pudo cargar el catálogo de herramientas.",
+  "portal.header.nav.reports": "Reportes",
+  "portal.reports.title": "Reportes",
+  "portal.reports.subtitle": "Informa de un problema al equipo de moderación y habla con ellos al respecto.",
+  "portal.reports.transparencyNote": "Cada reporte y las respuestas del equipo son públicos, para que toda la comunidad vea cómo se gestionó. Solo quien reporta y el equipo pueden responder.",
+  "portal.reports.filterAll": "Todos",
+  "portal.reports.empty": "Aún no hay reportes.",
+  "portal.reports.emptyFiltered": "No hay reportes con este estado.",
+  "portal.reports.loadMore": "Cargar más",
+  "portal.reports.anonymous": "Anónimo",
+  "portal.reports.replies": "{count, plural, one {# respuesta} other {# respuestas}}",
+  "portal.reports.composer.errorSignIn": "Inicia sesión para enviar un reporte",
+  "portal.reports.composer.toastSubmitted": "Reporte enviado",
+  "portal.reports.composer.titlePlaceholder": "¿Qué quieres reportar?",
+  "portal.reports.composer.titleLabel": "Título del reporte",
+  "portal.reports.composer.detailsPlaceholder": "Describe lo que pasó, con enlaces o capturas. Los reportes son públicos."
 }

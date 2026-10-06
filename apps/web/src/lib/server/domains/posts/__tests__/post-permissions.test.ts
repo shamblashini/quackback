@@ -246,6 +246,51 @@ describe('post.permissions', () => {
       await expect(softDeletePost(POST_ID, USER_ACTOR)).rejects.toThrow('only delete your own')
     })
 
+    it('should refuse the author deleting their own report (reports stay public)', async () => {
+      mockFindFirst.mockResolvedValueOnce({
+        id: POST_ID,
+        title: 'A report',
+        deletedAt: null,
+        principalId: USER_ACTOR.principalId,
+        voteCount: 0,
+        postStatus: { isDefault: true },
+        board: { access: { kind: 'reports' } },
+      })
+      const { softDeletePost } = await import('../post.user-actions')
+
+      await expect(softDeletePost(POST_ID, USER_ACTOR)).rejects.toThrow(/stay public/)
+      expect(updateSetCalls).toHaveLength(0)
+    })
+
+    it('should still let the author delete an untouched post on a feedback board', async () => {
+      mockFindFirst.mockResolvedValueOnce({
+        id: POST_ID,
+        title: 'An idea',
+        deletedAt: null,
+        principalId: USER_ACTOR.principalId,
+        voteCount: 0,
+        postStatus: { isDefault: true },
+        board: { access: {} },
+      })
+      const { softDeletePost } = await import('../post.user-actions')
+
+      await expect(softDeletePost(POST_ID, USER_ACTOR)).resolves.not.toThrow()
+    })
+
+    it('should let the team delete a report', async () => {
+      mockFindFirst.mockResolvedValueOnce({
+        id: POST_ID,
+        title: 'A report',
+        deletedAt: null,
+        principalId: USER_ACTOR.principalId,
+        postStatus: { isDefault: true },
+        board: { access: { kind: 'reports' } },
+      })
+      const { softDeletePost } = await import('../post.user-actions')
+
+      await expect(softDeletePost(POST_ID, TEAM_ACTOR)).resolves.not.toThrow()
+    })
+
     it('should dispatch post.deleted event', async () => {
       const { dispatchPostDeleted } = await import('@/lib/server/events/dispatch')
       mockFindFirst.mockResolvedValueOnce({
@@ -263,6 +308,25 @@ describe('post.permissions', () => {
         expect.objectContaining({ principalId: TEAM_ACTOR.principalId }),
         expect.objectContaining({ id: POST_ID, title: 'Test Post', boardSlug: 'feedback' })
       )
+    })
+  })
+})
+
+describe('authorPostRules', () => {
+  const lenient = { allowEditAfterEngagement: true, allowDeleteAfterEngagement: true }
+
+  it('passes the workspace rules through on a feedback board', async () => {
+    const { authorPostRules } = await import('../post.permissions')
+    expect(authorPostRules(lenient, { access: {} })).toEqual({ ...lenient, canDelete: true })
+    expect(authorPostRules(lenient, null)).toEqual({ ...lenient, canDelete: true })
+  })
+
+  it('locks a report down whatever the workspace allows', async () => {
+    const { authorPostRules } = await import('../post.permissions')
+    expect(authorPostRules(lenient, { access: { kind: 'reports' } })).toEqual({
+      allowEditAfterEngagement: false,
+      allowDeleteAfterEngagement: false,
+      canDelete: false,
     })
   })
 })

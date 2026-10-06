@@ -1171,5 +1171,20 @@
   "automation.builtinTools.default": "預設",
   "automation.builtinTools.saving": "儲存中…",
   "automation.builtinTools.saveError": "無法更新工具權限。",
-  "automation.builtinTools.loadError": "無法載入工具目錄。"
+  "automation.builtinTools.loadError": "無法載入工具目錄。",
+  "portal.header.nav.reports": "檢舉",
+  "portal.reports.title": "檢舉",
+  "portal.reports.subtitle": "向管理團隊檢舉問題，並與他們溝通處理。",
+  "portal.reports.transparencyNote": "每則檢舉及團隊的回覆都是公開的，整個社群都能看到它是如何處理的。只有檢舉人和團隊可以回覆。",
+  "portal.reports.filterAll": "全部",
+  "portal.reports.empty": "尚無檢舉。",
+  "portal.reports.emptyFiltered": "沒有此狀態的檢舉。",
+  "portal.reports.loadMore": "載入更多",
+  "portal.reports.anonymous": "匿名",
+  "portal.reports.replies": "{count, plural, other {# 則回覆}}",
+  "portal.reports.composer.errorSignIn": "請登入後提交檢舉",
+  "portal.reports.composer.toastSubmitted": "檢舉已提交",
+  "portal.reports.composer.titlePlaceholder": "你想檢舉什麼？",
+  "portal.reports.composer.titleLabel": "檢舉標題",
+  "portal.reports.composer.detailsPlaceholder": "描述發生了什麼，可附上連結或截圖。檢舉內容是公開的。"
 }

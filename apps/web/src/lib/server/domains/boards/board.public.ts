@@ -1,9 +1,16 @@
 import { db, eq, and, isNull, sql, boards, posts, type Board } from '@/lib/server/db'
 import { getTableColumns } from 'drizzle-orm'
 import type { BoardId } from '@quackback/ids'
+import type { BoardKind } from '@/lib/shared/db-types'
 import { InternalError } from '@/lib/shared/errors'
 import type { BoardWithStats } from './board.types'
-import { boardViewFilter, postViewFilter, ANONYMOUS_ACTOR, type Actor } from '@/lib/server/policy'
+import {
+  boardViewFilter,
+  postViewFilter,
+  ANONYMOUS_ACTOR,
+  type Actor,
+  boardKindCondition,
+} from '@/lib/server/policy'
 
 /**
  * Fetch a board by id, gated by the actor's view permission.
@@ -55,7 +62,8 @@ export async function getPublicBoardById(
  * once Task 13 lands).
  */
 export async function listPublicBoardsWithStats(
-  actor: Actor = ANONYMOUS_ACTOR
+  actor: Actor = ANONYMOUS_ACTOR,
+  kind: BoardKind = 'feedback'
 ): Promise<BoardWithStats[]> {
   try {
     // The post-count join must apply postViewFilter, not just isNull(deletedAt) —
@@ -74,7 +82,7 @@ export async function listPublicBoardsWithStats(
       // boardViewFilter embeds isNull(boards.deletedAt) in every branch — no
       // outer guard needed here. Callers of postViewFilter still need their
       // own guard because postViewFilter's team branch skips boardViewFilter.
-      .where(boardViewFilter(actor))
+      .where(and(boardViewFilter(actor), boardKindCondition(kind)))
       .groupBy(boards.id)
       .orderBy(boards.name)
 

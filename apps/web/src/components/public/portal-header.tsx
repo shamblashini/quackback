@@ -52,6 +52,8 @@ interface PortalHeaderProps {
   }
   /** Whether to show the theme toggle (hidden when admin forces a specific theme) */
   showThemeToggle?: boolean
+  /** Whether the viewer can see a report board — gates the Reports tab. */
+  hasReportBoards?: boolean
 }
 
 export function PortalHeader({
@@ -60,6 +62,7 @@ export function PortalHeader({
   userRole,
   initialUserData,
   showThemeToggle = true,
+  hasReportBoards = false,
 }: PortalHeaderProps) {
   const intl = useIntl()
   const router = useRouter()
@@ -98,6 +101,7 @@ export function PortalHeader({
       help: helpCenterEnabled,
       support: supportEnabled,
       status: statusEnabled,
+      reports: feedbackEnabled && hasReportBoards,
     },
     previewDraft?.nav ?? settings?.portalConfig?.nav
   )

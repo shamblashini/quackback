@@ -281,7 +281,7 @@ export interface PortalAccessConfig {
  * external link.
  */
 export type PortalNavItemType =
-  'feedback' | 'roadmap' | 'changelog' | 'help' | 'support' | 'status' | 'link'
+  'feedback' | 'roadmap' | 'changelog' | 'help' | 'support' | 'status' | 'reports' | 'link'
 
 /** An ordered, admin-configurable tab in the portal top-nav. */
 export interface PortalNavItemConfig {

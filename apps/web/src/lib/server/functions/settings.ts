@@ -363,7 +363,16 @@ export const updatePortalConfigSchema = z.object({
         .array(
           z.object({
             id: z.string().min(1).max(64),
-            type: z.enum(['feedback', 'roadmap', 'changelog', 'help', 'support', 'status', 'link']),
+            type: z.enum([
+              'feedback',
+              'roadmap',
+              'changelog',
+              'help',
+              'support',
+              'status',
+              'reports',
+              'link',
+            ]),
             enabled: z.boolean().optional(),
             label: z.string().trim().max(30).optional(),
             // http(s) only — blocks javascript:/data: URLs at the boundary.

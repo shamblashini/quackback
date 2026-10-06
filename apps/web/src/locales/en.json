@@ -1171,5 +1171,20 @@
   "automation.builtinTools.default": "Default",
   "automation.builtinTools.saving": "Saving…",
   "automation.builtinTools.saveError": "Tool permissions could not be updated.",
-  "automation.builtinTools.loadError": "Could not load the tool catalogue."
+  "automation.builtinTools.loadError": "Could not load the tool catalogue.",
+  "portal.header.nav.reports": "Reports",
+  "portal.reports.title": "Reports",
+  "portal.reports.subtitle": "Report a problem to the moderation team and talk it through with them.",
+  "portal.reports.transparencyNote": "Every report and the team's replies are public, so the whole community can see how each one was handled. Only the reporter and the team can reply.",
+  "portal.reports.filterAll": "All",
+  "portal.reports.empty": "No reports yet.",
+  "portal.reports.emptyFiltered": "No reports with this status.",
+  "portal.reports.loadMore": "Load more",
+  "portal.reports.anonymous": "Anonymous",
+  "portal.reports.replies": "{count, plural, one {# reply} other {# replies}}",
+  "portal.reports.composer.errorSignIn": "Please sign in to file a report",
+  "portal.reports.composer.toastSubmitted": "Report filed",
+  "portal.reports.composer.titlePlaceholder": "What would you like to report?",
+  "portal.reports.composer.titleLabel": "Report title",
+  "portal.reports.composer.detailsPlaceholder": "Describe what happened, with links or screenshots. Reports are public."
 }

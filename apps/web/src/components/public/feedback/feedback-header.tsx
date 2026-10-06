@@ -10,8 +10,9 @@ const FeedbackHeaderAnimated = lazy(() =>
   import('./feedback-header-animated').then((m) => ({ default: m.FeedbackHeaderAnimated }))
 )
 
-function FeedbackHeaderFallback() {
+function FeedbackHeaderFallback({ variant }: { variant: FeedbackHeaderProps['variant'] }) {
   const intl = useIntl()
+  const isReport = variant === 'report'
   return (
     <div className="bg-card border border-border rounded-lg mb-5 shadow-sm overflow-hidden">
       <div className="flex items-center gap-3 px-4 py-3.5">
@@ -20,15 +21,29 @@ function FeedbackHeaderFallback() {
         </div>
         <input
           type="text"
-          placeholder={intl.formatMessage({
-            id: 'portal.feedback.header.titlePlaceholder',
-            defaultMessage: "What's your idea?",
-          })}
+          placeholder={
+            isReport
+              ? intl.formatMessage({
+                  id: 'portal.reports.composer.titlePlaceholder',
+                  defaultMessage: 'What would you like to report?',
+                })
+              : intl.formatMessage({
+                  id: 'portal.feedback.header.titlePlaceholder',
+                  defaultMessage: "What's your idea?",
+                })
+          }
           readOnly
-          aria-label={intl.formatMessage({
-            id: 'portal.feedback.header.titleLabel',
-            defaultMessage: 'Feedback title',
-          })}
+          aria-label={
+            isReport
+              ? intl.formatMessage({
+                  id: 'portal.reports.composer.titleLabel',
+                  defaultMessage: 'Report title',
+                })
+              : intl.formatMessage({
+                  id: 'portal.feedback.header.titleLabel',
+                  defaultMessage: 'Feedback title',
+                })
+          }
           className="flex-1 bg-transparent border-0 outline-none text-foreground font-semibold placeholder:text-muted-foreground/60 placeholder:font-normal focus-visible:ring-2 focus-visible:ring-ring/50"
         />
       </div>
@@ -38,7 +53,7 @@ function FeedbackHeaderFallback() {
 
 export function FeedbackHeader(props: FeedbackHeaderProps) {
   return (
-    <Suspense fallback={<FeedbackHeaderFallback />}>
+    <Suspense fallback={<FeedbackHeaderFallback variant={props.variant} />}>
       <FeedbackHeaderAnimated {...props} />
     </Suspense>
   )

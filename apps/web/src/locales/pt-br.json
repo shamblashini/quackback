@@ -1171,5 +1171,20 @@
   "automation.builtinTools.default": "Padrão",
   "automation.builtinTools.saving": "Salvando…",
   "automation.builtinTools.saveError": "Não foi possível atualizar as permissões da ferramenta.",
-  "automation.builtinTools.loadError": "Não foi possível carregar o catálogo de ferramentas."
+  "automation.builtinTools.loadError": "Não foi possível carregar o catálogo de ferramentas.",
+  "portal.header.nav.reports": "Denúncias",
+  "portal.reports.title": "Denúncias",
+  "portal.reports.subtitle": "Relate um problema à equipe de moderação e converse com ela sobre isso.",
+  "portal.reports.transparencyNote": "Cada denúncia e as respostas da equipe são públicas, para que toda a comunidade veja como ela foi tratada. Só quem denunciou e a equipe podem responder.",
+  "portal.reports.filterAll": "Todas",
+  "portal.reports.empty": "Ainda não há denúncias.",
+  "portal.reports.emptyFiltered": "Nenhuma denúncia com este status.",
+  "portal.reports.loadMore": "Carregar mais",
+  "portal.reports.anonymous": "Anônimo",
+  "portal.reports.replies": "{count, plural, one {# resposta} other {# respostas}}",
+  "portal.reports.composer.errorSignIn": "Entre para enviar uma denúncia",
+  "portal.reports.composer.toastSubmitted": "Denúncia enviada",
+  "portal.reports.composer.titlePlaceholder": "O que você quer denunciar?",
+  "portal.reports.composer.titleLabel": "Título da denúncia",
+  "portal.reports.composer.detailsPlaceholder": "Descreva o que aconteceu, com links ou capturas de tela. As denúncias são públicas."
 }

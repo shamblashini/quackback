@@ -224,6 +224,20 @@ describe('boardAccessSchema — replyPolicy', () => {
   })
 })
 
+describe('boardAccessSchema — kind', () => {
+  it('leaves kind absent when omitted (absent = feedback)', () => {
+    expect('kind' in boardAccessSchema.parse(baseValid)).toBe(false)
+  })
+
+  it("accepts and round-trips kind='reports'", () => {
+    expect(boardAccessSchema.parse({ ...baseValid, kind: 'reports' }).kind).toBe('reports')
+  })
+
+  it('rejects an unknown kind', () => {
+    expect(() => boardAccessSchema.parse({ ...baseValid, kind: 'tickets' as never })).toThrow()
+  })
+})
+
 describe('boardAccessSchema — tier enum invariants', () => {
   it('rejects unknown tier name', () => {
     expect(() => boardAccessSchema.parse({ ...baseValid, view: 'admin' as never })).toThrow()

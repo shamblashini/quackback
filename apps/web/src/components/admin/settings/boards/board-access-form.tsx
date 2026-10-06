@@ -43,6 +43,7 @@ import {
   type AccessTier,
   type BoardAccess,
   DEFAULT_BOARD_ACCESS,
+  resolveBoardKind,
   resolveReplyPolicy,
 } from '@/lib/shared/db-types'
 import { accessForPreset } from '@/lib/shared/schemas/boards'
@@ -364,6 +365,30 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
     [form]
   )
 
+  // Turning a board into a public report board applies the transparency
+  // preset in one go: anyone can read every report, nobody votes on them, and
+  // each thread is reporter <-> team. Submit/comment tiers stay as they were
+  // (usually signed-in), and the admin can still fine-tune them below.
+  const handleReportBoardChange = useCallback(
+    (on: boolean) => {
+      const opts = { shouldDirty: true } as const
+      form.setValue('kind', on ? 'reports' : 'feedback', opts)
+      if (!on) return
+      const view: AccessTier = wsAllowAnonymous ? 'anonymous' : 'authenticated'
+      form.setValue('view', view, opts)
+      form.setValue('segments.view', [], opts)
+      form.setValue('vote', 'team', opts)
+      form.setValue('segments.vote', [], opts)
+      ;(['comment', 'submit'] as const).forEach((a) => {
+        if (ACCESS_TIER_RANK[form.getValues(a)] < ACCESS_TIER_RANK[view]) {
+          form.setValue(a, view, opts)
+        }
+      })
+      form.setValue('replyPolicy', 'author-only', opts)
+    },
+    [form, wsAllowAnonymous]
+  )
+
   // `replyPolicy` is an optional key on BoardAccess (absent == 'anyone'), so
   // it may be missing from the form's defaults. Writing it explicitly on
   // toggle keeps the saved payload unambiguous in both directions.
@@ -394,6 +419,15 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-24">
       {mutation.isError && <FormError message={mutation.error?.message ?? 'An error occurred'} />}
+
+      <div className="space-y-4">
+        <span className="text-sm font-semibold">Purpose</span>
+        <ReportBoardRow
+          on={resolveBoardKind(values) === 'reports'}
+          publicView={values.view === 'anonymous'}
+          onChange={handleReportBoardChange}
+        />
+      </div>
 
       <div className="space-y-4">
         <p className="text-xs text-muted-foreground max-w-xl">
@@ -460,6 +494,7 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
         <span className="text-sm font-semibold">Replies</span>
         <ReplyPolicyRow
           authorOnly={resolveReplyPolicy(values) === 'author-only'}
+          locked={resolveBoardKind(values) === 'reports'}
           onChange={handleReplyPolicyChange}
         />
       </div>
@@ -484,6 +519,8 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
 
 interface ReplyPolicyRowProps {
   authorOnly: boolean
+  /** Forced on by the report-board purpose; the switch is shown but inert. */
+  locked?: boolean
   onChange: (authorOnly: boolean) => void
 }
 
@@ -495,7 +532,7 @@ const REPLY_POLICY_LABEL = 'Only the post author and team members can reply'
  * all, and this narrows that set per post. Rendered inside the access form so
  * it shares one dirty state and one save dock with the matrix.
  */
-function ReplyPolicyRow({ authorOnly, onChange }: ReplyPolicyRowProps) {
+function ReplyPolicyRow({ authorOnly, locked = false, onChange }: ReplyPolicyRowProps) {
   return (
     <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 px-4 py-3.5 sm:flex-row sm:items-center">
       <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
@@ -513,14 +550,77 @@ function ReplyPolicyRow({ authorOnly, onChange }: ReplyPolicyRowProps) {
         <div className="mt-0.5 text-xs leading-snug text-muted-foreground">
           Anyone the access tiers allow can still view and open posts, but each post&apos;s thread
           stays between its author and your team.
+          {locked && ' Always on for a report board.'}
         </div>
       </div>
       <Switch
         checked={authorOnly}
+        disabled={locked}
         onCheckedChange={onChange}
         aria-label={REPLY_POLICY_LABEL}
         className="shrink-0 sm:ml-3"
       />
+    </div>
+  )
+}
+
+// ─── Report board (purpose) row ──────────────────────────────────────
+
+interface ReportBoardRowProps {
+  on: boolean
+  /** Whether logged-out visitors can read the board (the transparency goal). */
+  publicView: boolean
+  onChange: (on: boolean) => void
+}
+
+const REPORT_BOARD_LABEL = 'Public report board'
+
+/**
+ * `access.kind` toggle. A report board moves off the feedback feed and
+ * roadmaps onto the portal's /reports page; every report and the team's
+ * replies stay public, only the reporter and the team can reply, and a
+ * reporter can't delete a report once filed.
+ */
+function ReportBoardRow({ on, publicView, onChange }: ReportBoardRowProps) {
+  return (
+    <div className="rounded-lg border bg-muted/20 px-4 py-3.5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
+          <ShieldCheckIcon className="h-3.5 w-3.5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">{REPORT_BOARD_LABEL}</span>
+            {on && (
+              <span className="rounded border border-primary/30 bg-primary/10 px-1.5 py-px text-xs font-semibold uppercase tracking-wider text-primary">
+                On
+              </span>
+            )}
+          </div>
+          <div className="mt-0.5 text-xs leading-snug text-muted-foreground">
+            Lists this board&apos;s posts on the portal&apos;s{' '}
+            <span className="font-mono text-foreground">/reports</span> page instead of the feedback
+            feed and roadmaps. Every report and your team&apos;s replies stay public, only the
+            reporter and your team can reply, and reporters can&apos;t delete a report once filed.
+          </div>
+        </div>
+        <Switch
+          checked={on}
+          onCheckedChange={onChange}
+          aria-label={REPORT_BOARD_LABEL}
+          className="shrink-0 sm:ml-3"
+        />
+      </div>
+      {on && !publicView && (
+        <div className="mt-3 flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-xs text-muted-foreground">
+          <InformationCircleIcon className="h-3 w-3 shrink-0" />
+          <span>
+            Reports are only readable by the View tier below. Set View to{' '}
+            <span className="text-foreground">Anyone</span> to make them public to the whole
+            community.
+          </span>
+        </div>
+      )}
     </div>
   )
 }

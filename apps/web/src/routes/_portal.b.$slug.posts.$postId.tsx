@@ -284,9 +284,15 @@ function PostDetailPage() {
     <div data-testid="post-detail" className="mx-auto max-w-6xl w-full px-4 sm:px-6 py-6">
       <UnsubscribeBanner postId={post.id as PostId} />
 
-      <BackLink to="/" search={{ board: slug }} className="mb-6">
-        {board.name}
-      </BackLink>
+      {post.boardKind === 'reports' ? (
+        <BackLink to="/reports" className="mb-6">
+          {intl.formatMessage({ id: 'portal.reports.title', defaultMessage: 'Reports' })}
+        </BackLink>
+      ) : (
+        <BackLink to="/" search={{ board: slug }} className="mb-6">
+          {board.name}
+        </BackLink>
+      )}
 
       {/* Merge banner for duplicate posts */}
       {post.mergeInfo && (
@@ -300,9 +306,12 @@ function PostDetailPage() {
       {/* Post detail card */}
       <div className="bg-card border border-border/40 rounded-lg overflow-hidden">
         <div className="flex">
-          <Suspense fallback={<VoteSidebarSkeleton />}>
-            <VoteSidebar postId={postId} voteCount={post.voteCount} disabled={!!post.mergeInfo} />
-          </Suspense>
+          {/* Reports aren't up-voted: they're a record, not a request. */}
+          {post.boardKind !== 'reports' && (
+            <Suspense fallback={<VoteSidebarSkeleton />}>
+              <VoteSidebar postId={postId} voteCount={post.voteCount} disabled={!!post.mergeInfo} />
+            </Suspense>
+          )}
 
           <PostContentSection
             post={typedPost}
@@ -329,6 +338,7 @@ function PostDetailPage() {
             <MetadataSidebar
               postId={postId}
               voteCount={post.voteCount}
+              hideVote={post.boardKind === 'reports'}
               status={currentStatus}
               board={board}
               authorName={post.authorName}

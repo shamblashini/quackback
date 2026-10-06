@@ -138,6 +138,16 @@ export type ModerationRuleValue = (typeof MODERATION_RULE_VALUES)[number]
 export const REPLY_POLICIES = ['anyone', 'author-only'] as const
 export type ReplyPolicy = (typeof REPLY_POLICIES)[number]
 
+/** What a board is for.
+ *   - `feedback` — today's behaviour: ideas and requests on the feedback portal.
+ *   - `reports`  — a transparent report board. Its posts live on the portal's
+ *     dedicated reports page instead of the feedback feed, each thread is a
+ *     public conversation between the reporter and the team (author-only
+ *     replies are forced on), and a reporter can't delete a report once filed,
+ *     so the record stays public. */
+export const BOARD_KINDS = ['feedback', 'reports'] as const
+export type BoardKind = (typeof BOARD_KINDS)[number]
+
 export interface BoardAccess {
   view: AccessTier
   vote: AccessTier
@@ -167,6 +177,13 @@ export interface BoardAccess {
    *  column default is byte-pinned to its migration literal, so keeping the
    *  key out of the default is what lets this ship without a migration. */
   replyPolicy?: ReplyPolicy
+  /** Optional board purpose (see {@link BOARD_KINDS}). Absent means
+   *  `'feedback'` — read it through {@link resolveBoardKind}. Optional and
+   *  absent from the default for the same no-migration reason as
+   *  `replyPolicy`. Lives on `access` rather than `settings` because turning a
+   *  board into a public report board is a policy change: admin-only and
+   *  audited through the same path as the tier matrix. */
+  kind?: BoardKind
 }
 
 // Key order is jsonb-canonical (length, then bytewise) so the serialized
@@ -592,9 +609,20 @@ export function needsCloudOnboardingWizard(setupState: SetupState | null): boole
  * permissive default — so absent, null and undefined all read as `'anyone'`.
  */
 export function resolveReplyPolicy(
-  access: { replyPolicy?: ReplyPolicy } | null | undefined
+  access: { replyPolicy?: ReplyPolicy; kind?: BoardKind } | null | undefined
 ): ReplyPolicy {
+  // A report board's threads are always reporter <-> team, whatever the stored
+  // switch says, so every reader of the policy enforces that in one place.
+  if (resolveBoardKind(access) === 'reports') return 'author-only'
   return access?.replyPolicy ?? 'anyone'
+}
+
+export function resolveBoardKind(access: { kind?: BoardKind } | null | undefined): BoardKind {
+  return access?.kind ?? 'feedback'
+}
+
+export function isReportBoard(board: { access?: { kind?: BoardKind } | null } | null | undefined) {
+  return resolveBoardKind(board?.access) === 'reports'
 }
 
 // Helper to get typed board settings

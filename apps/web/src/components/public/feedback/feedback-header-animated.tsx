@@ -49,6 +49,11 @@ export interface FeedbackHeaderProps {
    */
   boardPermissions?: Record<string, { canSubmit: boolean; canVote: boolean }>
   onPostCreated?: (postId: string, boardSlug: string) => void
+  /**
+   * `report` re-words the composer for a report board (the portal's reports
+   * page) and skips the similar-ideas lookup, which searches feedback boards.
+   */
+  variant?: 'feedback' | 'report'
 }
 
 export function FeedbackHeaderAnimated({
@@ -57,8 +62,19 @@ export function FeedbackHeaderAnimated({
   user,
   boardPermissions,
   onPostCreated,
+  variant = 'feedback',
 }: FeedbackHeaderProps) {
   const intl = useIntl()
+  const isReport = variant === 'report'
+  const signInMessage = isReport
+    ? intl.formatMessage({
+        id: 'portal.reports.composer.errorSignIn',
+        defaultMessage: 'Please sign in to file a report',
+      })
+    : intl.formatMessage({
+        id: 'portal.feedback.header.errorSignIn',
+        defaultMessage: 'Please sign in to submit feedback',
+      })
   const router = useRouter()
   const { session } = useRouteContext({ from: '__root__' })
   const [expanded, setExpanded] = useState(false)
@@ -128,7 +144,7 @@ export function FeedbackHeaderAnimated({
   // Searches across ALL boards to find potential duplicates
   const { posts: similarPosts } = useSimilarPosts({
     title,
-    enabled: expanded,
+    enabled: expanded && !isReport,
   })
 
   const handleContentChange = useCallback(function (
@@ -170,10 +186,7 @@ export function FeedbackHeaderAnimated({
               id: 'portal.feedback.header.errorNoAccess',
               defaultMessage: "You don't have access to post on this board",
             })
-          : intl.formatMessage({
-              id: 'portal.feedback.header.errorSignIn',
-              defaultMessage: 'Please sign in to submit feedback',
-            })
+          : signInMessage
       )
       return
     }
@@ -213,10 +226,15 @@ export function FeedbackHeaderAnimated({
       onPostCreated?.(result.id, result.board.slug)
 
       toast.success(
-        intl.formatMessage({
-          id: 'portal.feedback.header.toastSubmitted',
-          defaultMessage: 'Feedback submitted',
-        }),
+        isReport
+          ? intl.formatMessage({
+              id: 'portal.reports.composer.toastSubmitted',
+              defaultMessage: 'Report filed',
+            })
+          : intl.formatMessage({
+              id: 'portal.feedback.header.toastSubmitted',
+              defaultMessage: 'Feedback submitted',
+            }),
         {
           action: {
             label: intl.formatMessage({
@@ -338,15 +356,29 @@ export function FeedbackHeaderAnimated({
         <motion.input
           ref={titleInputRef}
           type="text"
-          placeholder={intl.formatMessage({
-            id: 'portal.feedback.header.titlePlaceholder',
-            defaultMessage: "What's your idea?",
-          })}
+          placeholder={
+            isReport
+              ? intl.formatMessage({
+                  id: 'portal.reports.composer.titlePlaceholder',
+                  defaultMessage: 'What would you like to report?',
+                })
+              : intl.formatMessage({
+                  id: 'portal.feedback.header.titlePlaceholder',
+                  defaultMessage: "What's your idea?",
+                })
+          }
           value={title}
-          aria-label={intl.formatMessage({
-            id: 'portal.feedback.header.titleLabel',
-            defaultMessage: 'Feedback title',
-          })}
+          aria-label={
+            isReport
+              ? intl.formatMessage({
+                  id: 'portal.reports.composer.titleLabel',
+                  defaultMessage: 'Report title',
+                })
+              : intl.formatMessage({
+                  id: 'portal.feedback.header.titleLabel',
+                  defaultMessage: 'Feedback title',
+                })
+          }
           onChange={(e) => {
             setTitle(e.target.value)
             if (!expanded) setExpanded(true)
@@ -398,10 +430,18 @@ export function FeedbackHeaderAnimated({
               <RichTextEditor
                 value={contentJson || ''}
                 onChange={handleContentChange}
-                placeholder={intl.formatMessage({
-                  id: 'portal.feedback.header.detailsPlaceholder',
-                  defaultMessage: 'Add more details... Type / for commands',
-                })}
+                placeholder={
+                  isReport
+                    ? intl.formatMessage({
+                        id: 'portal.reports.composer.detailsPlaceholder',
+                        defaultMessage:
+                          'Describe what happened, with links or screenshots. Reports are public.',
+                      })
+                    : intl.formatMessage({
+                        id: 'portal.feedback.header.detailsPlaceholder',
+                        defaultMessage: 'Add more details... Type / for commands',
+                      })
+                }
                 minHeight="150px"
                 borderless
                 toolbarPosition="bottom"
@@ -431,7 +471,7 @@ export function FeedbackHeaderAnimated({
             {/* Similar posts card - shown above footer as pre-submit prompt */}
             <SimilarPostsCard
               posts={similarPosts}
-              show={title.length >= 5}
+              show={!isReport && title.length >= 5}
               className="px-4 sm:px-5 pb-3"
             />
 
@@ -514,10 +554,12 @@ export function FeedbackHeaderAnimated({
                             id: 'portal.feedback.header.submitTooltipNoAccess',
                             defaultMessage: "You don't have access to post on this board",
                           })
-                        : intl.formatMessage({
-                            id: 'portal.feedback.header.submitTooltipSignIn',
-                            defaultMessage: 'Please sign in to submit feedback',
-                          })
+                        : isReport
+                          ? signInMessage
+                          : intl.formatMessage({
+                              id: 'portal.feedback.header.submitTooltipSignIn',
+                              defaultMessage: 'Please sign in to submit feedback',
+                            })
                       : undefined
                   }
                   className="portal-submit-button bg-[var(--portal-button-background)] text-[var(--portal-button-foreground)] hover:bg-[var(--portal-button-background)]/90"

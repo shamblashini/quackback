@@ -1171,5 +1171,20 @@
   "automation.builtinTools.default": "Par défaut",
   "automation.builtinTools.saving": "Enregistrement…",
   "automation.builtinTools.saveError": "Impossible de mettre à jour les autorisations de l’outil.",
-  "automation.builtinTools.loadError": "Impossible de charger le catalogue d’outils."
+  "automation.builtinTools.loadError": "Impossible de charger le catalogue d’outils.",
+  "portal.header.nav.reports": "Signalements",
+  "portal.reports.title": "Signalements",
+  "portal.reports.subtitle": "Signalez un problème à l'équipe de modération et échangez avec elle.",
+  "portal.reports.transparencyNote": "Chaque signalement et les réponses de l'équipe sont publics, pour que toute la communauté voie comment il a été traité. Seuls l'auteur du signalement et l'équipe peuvent répondre.",
+  "portal.reports.filterAll": "Tous",
+  "portal.reports.empty": "Aucun signalement pour l'instant.",
+  "portal.reports.emptyFiltered": "Aucun signalement avec ce statut.",
+  "portal.reports.loadMore": "Charger plus",
+  "portal.reports.anonymous": "Anonyme",
+  "portal.reports.replies": "{count, plural, one {# réponse} other {# réponses}}",
+  "portal.reports.composer.errorSignIn": "Connectez-vous pour faire un signalement",
+  "portal.reports.composer.toastSubmitted": "Signalement envoyé",
+  "portal.reports.composer.titlePlaceholder": "Que souhaitez-vous signaler ?",
+  "portal.reports.composer.titleLabel": "Titre du signalement",
+  "portal.reports.composer.detailsPlaceholder": "Décrivez ce qui s'est passé, avec des liens ou des captures d'écran. Les signalements sont publics."
 }

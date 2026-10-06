@@ -4,6 +4,7 @@ import {
   ACCESS_TIER_RANK,
   MODERATION_RULE_VALUES,
   REPLY_POLICIES,
+  BOARD_KINDS,
   type BoardAccess,
 } from '@/lib/shared/db-types'
 
@@ -63,6 +64,7 @@ export function normalizeBoardAccess(access: Partial<BoardAccess> | null | undef
       comments: moderation?.comments ?? INHERIT_MODERATION.comments,
     },
     ...(access?.replyPolicy ? { replyPolicy: access.replyPolicy } : {}),
+    ...(access?.kind ? { kind: access.kind } : {}),
   }
 }
 
@@ -119,6 +121,7 @@ export type DeleteBoardInput = z.infer<typeof deleteBoardSchema>
 const tierSchema = z.enum(ACCESS_TIERS)
 const moderationRuleSchema = z.enum(MODERATION_RULE_VALUES)
 const replyPolicySchema = z.enum(REPLY_POLICIES)
+const boardKindSchema = z.enum(BOARD_KINDS)
 
 /**
  * Validation for the per-action `BoardAccess` payload
@@ -163,6 +166,8 @@ export const boardAccessSchema = z
       comments: moderationRuleSchema,
     }),
     replyPolicy: replyPolicySchema.optional(),
+    // Optional board purpose; absent is a feedback board (see BOARD_KINDS).
+    kind: boardKindSchema.optional(),
   })
   .superRefine((val, ctx) => {
     if (ACCESS_TIER_RANK[val.vote] < ACCESS_TIER_RANK[val.view]) {

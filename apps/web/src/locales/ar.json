@@ -1171,5 +1171,20 @@
   "automation.builtinTools.default": "افتراضي",
   "automation.builtinTools.saving": "جارٍ الحفظ…",
   "automation.builtinTools.saveError": "تعذّر تحديث أذونات الأدوات.",
-  "automation.builtinTools.loadError": "تعذّر تحميل قائمة الأدوات."
+  "automation.builtinTools.loadError": "تعذّر تحميل قائمة الأدوات.",
+  "portal.header.nav.reports": "البلاغات",
+  "portal.reports.title": "البلاغات",
+  "portal.reports.subtitle": "أبلغ فريق الإشراف عن مشكلة وناقشها معهم.",
+  "portal.reports.transparencyNote": "كل بلاغ وردود الفريق عليه علنية، ليرى المجتمع كله كيف عولج. لا يمكن الرد إلا لصاحب البلاغ والفريق.",
+  "portal.reports.filterAll": "الكل",
+  "portal.reports.empty": "لا توجد بلاغات بعد.",
+  "portal.reports.emptyFiltered": "لا توجد بلاغات بهذه الحالة.",
+  "portal.reports.loadMore": "تحميل المزيد",
+  "portal.reports.anonymous": "مجهول",
+  "portal.reports.replies": "{count, plural, zero {لا ردود} one {رد واحد} two {ردّان} few {# ردود} many {# ردًا} other {# رد}}",
+  "portal.reports.composer.errorSignIn": "يرجى تسجيل الدخول لتقديم بلاغ",
+  "portal.reports.composer.toastSubmitted": "تم تقديم البلاغ",
+  "portal.reports.composer.titlePlaceholder": "ما الذي تريد الإبلاغ عنه؟",
+  "portal.reports.composer.titleLabel": "عنوان البلاغ",
+  "portal.reports.composer.detailsPlaceholder": "صف ما حدث، مع روابط أو لقطات شاشة. البلاغات علنية."
 }

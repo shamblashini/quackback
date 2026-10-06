@@ -27,7 +27,13 @@ import {
 } from '@quackback/ids'
 import type { PublicPostListResult } from './post.types'
 import type { RespondedFilter } from '@/lib/shared/types/filters'
-import { postViewFilter, ANONYMOUS_ACTOR, type Actor } from '@/lib/server/policy'
+import {
+  postViewFilter,
+  ANONYMOUS_ACTOR,
+  type Actor,
+  boardKindCondition,
+} from '@/lib/server/policy'
+import type { BoardKind } from '@/lib/shared/db-types'
 
 import { getPublicUrlOrNull } from '@/lib/server/storage/s3'
 
@@ -100,6 +106,13 @@ export interface PostWithVotesAndAvatars {
 
 interface PostListParams {
   boardSlug?: string
+  /** Which kind of board to list from when no `boardSlug` narrows it.
+   *  Defaults to `'feedback'`, so report posts never reach the feedback feed;
+   *  the reports page passes `'reports'`. */
+  boardKind?: BoardKind
+  /** List every status, including complete/closed. The feedback feed hides
+   *  finished posts by default; the reports page keeps them as public record. */
+  allStatuses?: boolean
   search?: string
   statusIds?: PostStatusId[]
   statusSlugs?: string[]
@@ -142,6 +155,8 @@ function buildPostFilterConditions(params: PostListParams, actor: Actor) {
 
   if (boardSlug) {
     conditions.push(eq(boards.slug, boardSlug))
+  } else {
+    conditions.push(boardKindCondition(params.boardKind ?? 'feedback'))
   }
 
   if (statusSlugs && statusSlugs.length > 0) {
@@ -152,7 +167,7 @@ function buildPostFilterConditions(params: PostListParams, actor: Actor) {
     conditions.push(inArray(posts.statusId, statusIdSubquery))
   } else if (statusIds && statusIds.length > 0) {
     conditions.push(inArray(posts.statusId, statusIds))
-  } else {
+  } else if (!params.allStatuses) {
     // Default: exclude complete/closed posts — only show active-category statuses (or unstatused)
     const activeStatusSubquery = db
       .select({ id: postStatuses.id })

@@ -312,7 +312,8 @@ export function boardCapabilitiesForActor(
   // it is a per-post concern, not a board capability. On an author-only board a
   // non-team user CAN still reply — on their own post — so the board-level
   // answer stays tier-based and the per-post truth comes from canCommentOnPost.
-  const { replyPolicy: _replyPolicy, ...commentAccess } = board.access
+  // `kind` goes too: a report board forces the author-only policy on through it.
+  const { replyPolicy: _replyPolicy, kind: _kind, ...commentAccess } = board.access
   const canComment = canCreateComment(
     actor,
     { moderationState: 'published', principalId: null, isCommentsLocked: false },

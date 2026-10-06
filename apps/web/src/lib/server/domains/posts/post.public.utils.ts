@@ -15,7 +15,12 @@ import { toUuid, type PostId, type PostStatusId, type PrincipalId } from '@quack
 import { relatedPostIdsSql } from './post.merge-ids'
 import type { RoadmapPostListResult } from './post.types'
 import { getExecuteRows } from '@/lib/server/utils'
-import { postViewFilter, ANONYMOUS_ACTOR, type Actor } from '@/lib/server/policy'
+import {
+  postViewFilter,
+  ANONYMOUS_ACTOR,
+  type Actor,
+  boardKindCondition,
+} from '@/lib/server/policy'
 
 export async function getPublicRoadmapPostsPaginated(params: {
   statusId: PostStatusId
@@ -52,7 +57,8 @@ export async function getPublicRoadmapPostsPaginated(params: {
         isNull(posts.deletedAt),
         // Soft-delete intent applies to the board too — don't surface
         // posts whose board has been deleted via the roadmap status view.
-        isNull(boards.deletedAt)
+        isNull(boards.deletedAt),
+        boardKindCondition('feedback')
       )
     )
     .orderBy(desc(posts.voteCount))
