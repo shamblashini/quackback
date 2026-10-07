@@ -170,6 +170,19 @@ export const boardAccessSchema = z
     kind: boardKindSchema.optional(),
   })
   .superRefine((val, ctx) => {
+    // Report boards take contributions from signed-in accounts only, so a
+    // report board can't be saved with an "Anyone" submit or comment tier.
+    if (val.kind === 'reports') {
+      for (const action of ['submit', 'comment'] as const) {
+        if (val[action] === 'anonymous') {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [action],
+            message: 'A report board requires an account to submit and comment.',
+          })
+        }
+      }
+    }
     if (ACCESS_TIER_RANK[val.vote] < ACCESS_TIER_RANK[val.view]) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

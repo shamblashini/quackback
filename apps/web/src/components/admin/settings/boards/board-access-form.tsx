@@ -266,6 +266,20 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
     })
   }, [wsAllowAnonymous, form])
 
+  // Same auto-bump for a report board saved before reports required an
+  // account: an "Anyone" submit/comment tier is raised to signed-in, leaving
+  // the form dirty so the admin confirms it (the schema rejects the old shape).
+  const isReportBoardForm = resolveBoardKind(values) === 'reports'
+  useEffect(() => {
+    if (!isReportBoardForm) return
+    ;(['submit', 'comment'] as const).forEach((id) => {
+      if (form.getValues(id) === 'anonymous') {
+        form.setValue(id, 'authenticated', { shouldDirty: true })
+        form.setValue(`segments.${id}`, [], { shouldDirty: true })
+      }
+    })
+  }, [isReportBoardForm, accessKey, form])
+
   const activePreset = useMemo(() => deriveActivePreset(values), [values])
 
   // Validate: any action on the 'segments' tier needs ≥1 segment selected.
@@ -314,6 +328,14 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
     (actionId: ActionId, tierId: AccessTier) => {
       // Tier hierarchy: comment/vote/submit can't be more open than view.
       if (actionId !== 'view' && ACCESS_TIER_RANK[tierId] < ACCESS_TIER_RANK[values.view]) {
+        return
+      }
+      // Report boards: filing and replying need an account, never "Anyone".
+      if (
+        tierId === 'anonymous' &&
+        (actionId === 'submit' || actionId === 'comment') &&
+        resolveBoardKind(values) === 'reports'
+      ) {
         return
       }
       // Workspace ceiling: anonymous is gated by the workspace-wide
@@ -379,9 +401,11 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
       form.setValue('segments.view', [], opts)
       form.setValue('vote', 'team', opts)
       form.setValue('segments.vote', [], opts)
+      // Filing and replying always need an account on a report board.
       ;(['comment', 'submit'] as const).forEach((a) => {
-        if (ACCESS_TIER_RANK[form.getValues(a)] < ACCESS_TIER_RANK[view]) {
-          form.setValue(a, view, opts)
+        if (ACCESS_TIER_RANK[form.getValues(a)] < ACCESS_TIER_RANK.authenticated) {
+          form.setValue(a, 'authenticated', opts)
+          form.setValue(`segments.${a}`, [], opts)
         }
       })
       form.setValue('replyPolicy', 'author-only', opts)
@@ -600,8 +624,9 @@ function ReportBoardRow({ on, publicView, onChange }: ReportBoardRowProps) {
           <div className="mt-0.5 text-xs leading-snug text-muted-foreground">
             Lists this board&apos;s posts on the portal&apos;s{' '}
             <span className="font-mono text-foreground">/reports</span> page instead of the feedback
-            feed and roadmaps. Every report and your team&apos;s replies stay public, only the
-            reporter and your team can reply, and reporters can&apos;t delete a report once filed.
+            feed and roadmaps. Every report and your team&apos;s replies stay public, filing and
+            replying need an account, only the reporter and your team can reply, and reporters
+            can&apos;t delete a report once filed.
           </div>
         </div>
         <Switch
@@ -851,14 +876,21 @@ function MatrixRow({
         // View has no ceiling.
         const isAnonCeilingAction = ANON_CEILING_ACTIONS.includes(action.id as AnonCeilingAction)
         const wsBlocked = tier.id === 'anonymous' && isAnonCeilingAction && !wsAllowAnonymous
-        const disabled = hierarchyBlocked || wsBlocked
+        // Report boards: filing and replying always need an account.
+        const reportBlocked =
+          tier.id === 'anonymous' &&
+          (action.id === 'submit' || action.id === 'comment') &&
+          resolveBoardKind(values) === 'reports'
+        const disabled = hierarchyBlocked || wsBlocked || reportBlocked
         const isSegmentsCell = tier.id === 'segments'
 
         const tooltip = wsBlocked
           ? 'Anonymous interaction is disabled workspace-wide. Manage in Access & Security → Portal access.'
-          : hierarchyBlocked
-            ? `Can't be more open than View (${TIERS.find((x) => ACCESS_TIER_RANK[x.id] === minRank)?.label}).`
-            : undefined
+          : reportBlocked
+            ? 'Report boards require an account to file and reply to reports.'
+            : hierarchyBlocked
+              ? `Can't be more open than View (${TIERS.find((x) => ACCESS_TIER_RANK[x.id] === minRank)?.label}).`
+              : undefined
 
         const disabledStyle: CSSProperties = disabled
           ? {
@@ -887,7 +919,13 @@ function MatrixRow({
             aria-label={`${action.label}: ${tier.label}`}
             aria-pressed={isSelected}
             data-disabled-reason={
-              wsBlocked ? 'workspace' : hierarchyBlocked ? 'hierarchy' : undefined
+              wsBlocked
+                ? 'workspace'
+                : reportBlocked
+                  ? 'reports'
+                  : hierarchyBlocked
+                    ? 'hierarchy'
+                    : undefined
             }
             className={cn(
               'flex min-h-[58px] items-center justify-center border-l px-2 py-3 transition-colors',

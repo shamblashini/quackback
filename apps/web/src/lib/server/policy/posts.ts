@@ -15,7 +15,7 @@ import {
 // Imported through the client-safe re-export, not '@/lib/server/db': this is a
 // pure helper, and pulling it from the db barrel would make every suite that
 // mocks that barrel have to stub it.
-import { resolveReplyPolicy } from '@/lib/shared/db-types'
+import { resolveBoardKind, resolveReplyPolicy } from '@/lib/shared/db-types'
 import type { PrincipalId } from '@quackback/ids'
 import { allowDecision, denyDecision, isTeamActor, type Actor, type Decision } from './types'
 import { can } from './authorize'
@@ -73,6 +73,19 @@ function accessOf(board: BoardShape): BoardAccess {
 }
 
 const isTeam = isTeamActor
+
+export const REPORT_ACCOUNT_REQUIRED = 'Sign in to an account to file or reply to a report'
+
+/**
+ * Report boards never take anonymous contributions: a report is a public
+ * record, so it and every reply in its thread must come from a signed-in
+ * account (or the team). Anonymous visitors and lazily-created anonymous
+ * sessions are refused whatever the submit/comment tiers say, so a tier left
+ * on "Anyone" (or a hand-edited access row) can't reopen the door.
+ */
+function reportNeedsAccount(actor: Actor, access: BoardAccess): boolean {
+  return resolveBoardKind(access) === 'reports' && !isTeam(actor) && actor.principalType !== 'user'
+}
 
 export function canViewPost(actor: Actor, post: PostShape, board: BoardShape): Decision {
   const boardDecision = canViewBoard(actor, board)
@@ -168,6 +181,9 @@ export function canCreateComment(
   if (!tierAllows(actor, access.comment, access.segments.comment)) {
     return { allowed: false, reason: tierDenyMessage('comment', access.comment) }
   }
+  if (reportNeedsAccount(actor, access)) {
+    return { allowed: false, reason: REPORT_ACCOUNT_REQUIRED }
+  }
   // Author-only board: the thread belongs to its author, so only they and the
   // team may reply. Authorship is principalId VALUE equality guarded on a
   // non-null actor principal — the same guard canViewPost's own-pending hatch
@@ -243,6 +259,9 @@ export function canCreatePost(
   if (!tierAllows(actor, access.submit, access.segments.submit)) {
     return { allowed: false, reason: tierDenyMessage('submit', access.submit) }
   }
+  if (reportNeedsAccount(actor, access)) {
+    return { allowed: false, reason: REPORT_ACCOUNT_REQUIRED }
+  }
 
   // Team always bypasses the moderation queue.
   if (isTeam(actor)) {
@@ -314,12 +333,16 @@ export function boardCapabilitiesForActor(
   // answer stays tier-based and the per-post truth comes from canCommentOnPost.
   // `kind` goes too: a report board forces the author-only policy on through it.
   const { replyPolicy: _replyPolicy, kind: _kind, ...commentAccess } = board.access
-  const canComment = canCreateComment(
-    actor,
-    { moderationState: 'published', principalId: null, isCommentsLocked: false },
-    { access: commentAccess },
-    undefined
-  ).allowed
+  // ...but the account requirement IS board-level: no anonymous viewer can
+  // reply anywhere on a report board, so it is applied back on here.
+  const canComment =
+    !reportNeedsAccount(actor, board.access) &&
+    canCreateComment(
+      actor,
+      { moderationState: 'published', principalId: null, isCommentsLocked: false },
+      { access: commentAccess },
+      undefined
+    ).allowed
   // Compose the workspace anonymous ceiling for non-user actors only.
   if (isAnonCeilinged(actor)) {
     return {

@@ -230,7 +230,19 @@ describe('boardAccessSchema — kind', () => {
   })
 
   it("accepts and round-trips kind='reports'", () => {
-    expect(boardAccessSchema.parse({ ...baseValid, kind: 'reports' }).kind).toBe('reports')
+    const signedIn = { submit: 'authenticated', comment: 'authenticated' } as const
+    expect(boardAccessSchema.parse({ ...baseValid, ...signedIn, kind: 'reports' }).kind).toBe(
+      'reports'
+    )
+  })
+
+  it('rejects a report board that lets anyone submit or comment without an account', () => {
+    const open = { ...baseValid, view: 'anonymous', kind: 'reports' } as const
+    expect(() => boardAccessSchema.parse({ ...open, submit: 'anonymous' })).toThrow(/account/)
+    expect(() => boardAccessSchema.parse({ ...open, comment: 'anonymous' })).toThrow(/account/)
+    expect(() =>
+      boardAccessSchema.parse({ ...open, submit: 'authenticated', comment: 'authenticated' })
+    ).not.toThrow()
   })
 
   it('rejects an unknown kind', () => {

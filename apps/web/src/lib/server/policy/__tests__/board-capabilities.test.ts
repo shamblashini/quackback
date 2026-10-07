@@ -145,6 +145,20 @@ const publishedBy = (principalId: Actor['principalId']) => ({
   principalId,
 })
 
+describe('boardCapabilitiesForActor — report boards', () => {
+  it('never advertises submit or reply to an anonymous viewer', () => {
+    const reports = makeAccess({ kind: 'reports' })
+    expect(boardCapabilitiesForActor(ANON, reports, true)).toMatchObject({
+      canSubmit: false,
+      canComment: false,
+    })
+    expect(boardCapabilitiesForActor(USER, reports, true)).toMatchObject({
+      canSubmit: true,
+      canComment: true,
+    })
+  })
+})
+
 describe('canCommentOnPost', () => {
   it('report board: only the reporter and the team may reply', () => {
     const reports = makeAccess({ kind: 'reports' })

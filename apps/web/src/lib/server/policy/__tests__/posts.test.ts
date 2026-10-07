@@ -1426,3 +1426,49 @@ describe('canCreateComment — report boards force the author-only policy', () =
     expect(canCreateComment(portal, post(OTHER), feedback, 'none').allowed).toBe(true)
   })
 })
+
+describe('report boards require an account', () => {
+  // A report is a public record: filing one, and replying in its thread, needs
+  // a signed-in account even when a tier was left on "Anyone".
+  const openReports = {
+    access: {
+      ...mkAccess('anonymous'),
+      submit: 'anonymous',
+      comment: 'anonymous',
+      kind: 'reports',
+    },
+  } as { access: BoardAccess }
+  const anonAuthored = {
+    moderationState: 'published' as ModerationState,
+    principalId: null,
+    isCommentsLocked: false,
+  }
+
+  it('refuses an anonymous visitor filing a report', () => {
+    const d = canCreatePost(anon, openReports, 'none')
+    expect(d.allowed).toBe(false)
+    if (!d.allowed) expect(d.reason).toMatch(/sign in/i)
+  })
+
+  it('refuses a service principal too — only accounts and the team', () => {
+    expect(canCreatePost(service, openReports, 'none').allowed).toBe(false)
+  })
+
+  it('lets a signed-in member and the team file reports', () => {
+    expect(canCreatePost(portal, openReports, 'none').allowed).toBe(true)
+    expect(canCreatePost(admin, openReports, 'none').allowed).toBe(true)
+  })
+
+  it('refuses an anonymous reply on a report', () => {
+    const d = canCreateComment(anon, anonAuthored, openReports, 'none')
+    expect(d.allowed).toBe(false)
+    if (!d.allowed) expect(d.reason).toMatch(/sign in/i)
+  })
+
+  it('leaves anonymous posting on feedback boards alone', () => {
+    const openFeedback = { access: { ...openReports.access, kind: 'feedback' } } as {
+      access: BoardAccess
+    }
+    expect(canCreatePost(anon, openFeedback, 'none').allowed).toBe(true)
+  })
+})
