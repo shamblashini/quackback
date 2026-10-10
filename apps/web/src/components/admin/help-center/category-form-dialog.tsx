@@ -1,4 +1,4 @@
-import { Suspense, useState, useEffect, useMemo } from 'react'
+import { Suspense, useState, useEffect, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Dialog,
@@ -256,6 +256,7 @@ export function CategoryFormDialog({
   const [isPublic, setIsPublic] = useState(true)
   const [segmentIds, setSegmentIds] = useState<string[]>([])
   const [parentId, setParentId] = useState<KbCategoryId | null>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const [iconSearch, setIconSearch] = useState('')
 
@@ -344,7 +345,13 @@ export function CategoryFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        // The dialog focuses the first tabbable element by default, which is the
+        // icon picker button. Typing a name then goes nowhere and the first space
+        // opens the picker, so start in the name field instead.
+        initialFocus={nameInputRef}
+      >
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit category' : 'New category'}</DialogTitle>
           <DialogDescription>
@@ -366,6 +373,7 @@ export function CategoryFormDialog({
                 <PopoverTrigger asChild>
                   <button
                     type="button"
+                    aria-label="Choose icon"
                     className="h-9 w-9 rounded-md border border-border/50 flex items-center justify-center hover:bg-muted transition-colors shrink-0"
                   >
                     <CategoryIcon icon={icon} className="w-5 h-5" />
@@ -394,6 +402,7 @@ export function CategoryFormDialog({
                 </PopoverContent>
               </Popover>
               <Input
+                ref={nameInputRef}
                 id="category-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
