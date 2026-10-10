@@ -1,11 +1,9 @@
 import type { PlanNotice } from '../tier-limits.types'
 import { PLAN_CATALOGUE, type CloudConfig } from './cloud.types'
-import { daysUntil, isTrialEnded } from '@/lib/shared/billing/trial-state'
-
-export const IN_APP_PLANS_PATH = '/admin/settings/billing'
+import { daysUntil, trialChoiceDueAt } from '@/lib/shared/billing/trial-state'
 
 export function plansActionUrl(config: Pick<CloudConfig, 'enabled' | 'canUpgrade'>): string | null {
-  return config.enabled && config.canUpgrade ? IN_APP_PLANS_PATH : null
+  return config.enabled && config.canUpgrade ? '/admin/settings/billing' : null
 }
 
 function planLabel(config: CloudConfig, trialPlanName?: string | null): string {
@@ -21,7 +19,8 @@ export function trialNotice(config: CloudConfig, now: Date = new Date()): PlanNo
   const urgent = daysLeft !== null && daysLeft <= 3
   return {
     label: `${planLabel(config)} trial`,
-    message: 'When this ends you will continue on Free. Everything you have built stays.',
+    trialPlan: planLabel(config),
+    message: 'When this ends, pick a paid plan or switch to Free from billing.',
     expiresAt: config.trialExpiresAt,
     ...(actionUrl
       ? {
@@ -32,40 +31,43 @@ export function trialNotice(config: CloudConfig, now: Date = new Date()): PlanNo
   }
 }
 
+/**
+ * The strip for an ended trial nobody has chosen a plan for. The workspace is
+ * already running on Free limits, so it never asks for billing details: it
+ * asks for a choice, and says by when. Teammates who cannot manage billing get
+ * the same news without a button they could not use.
+ */
 export function trialEndedNotice(
   config: CloudConfig,
-  options: { trialPlanName?: string | null; now?: Date } = {}
+  options: { trialPlanName?: string | null; now?: Date; canManageBilling?: boolean } = {}
 ): PlanNotice | null {
   if (!config.enabled || !config.plan) return null
   const now = options.now ?? new Date()
-  if (
-    !isTrialEnded({
-      plan: config.plan,
-      trialActive: config.trialActive,
-      trialExpiresAt: config.trialExpiresAt,
-      status: config.subscriptionStatus,
-      now,
-    })
-  ) {
-    return null
+  const dueAt = trialChoiceDueAt({
+    plan: config.plan,
+    trialActive: config.trialActive,
+    trialExpiresAt: config.trialExpiresAt,
+    status: config.subscriptionStatus,
+    now,
+  })
+  if (!dueAt) return null
+  const name = options.trialPlanName
+  const label = name ? `${name} trial ended` : 'Trial ended'
+  const base = { label, expiresAt: config.trialExpiresAt!, ended: true as const }
+  if (options.canManageBilling === false) {
+    return {
+      ...base,
+      message: 'The workspace owner needs to choose a plan. Until then, Free limits apply.',
+    }
   }
   const actionUrl = plansActionUrl(config)
-  const name = options.trialPlanName
-  const ended = formatNoticeDate(config.trialExpiresAt!)
   return {
-    label: name ? `${name} trial` : 'Trial',
+    ...base,
     message: name
-      ? `Your ${name} trial ended ${ended}. You are on Free now, and everything you built is still here.`
-      : `Your trial ended ${ended}. You are on Free now, and everything you built is still here.`,
-    expiresAt: config.trialExpiresAt!,
-    dismissible: true,
-    ...(actionUrl ? { actionUrl, actionLabel: name ? `Continue with ${name}` : 'See plans' } : {}),
+      ? `Choose how this workspace continues: keep ${name}, or switch to Free.`
+      : 'Choose how this workspace continues: pick a paid plan, or switch to Free.',
+    ...(actionUrl
+      ? { actionUrl, actionLabel: 'Choose a plan', choiceDueAt: dueAt.toISOString() }
+      : {}),
   }
-}
-
-function formatNoticeDate(iso: string): string {
-  const date = new Date(iso)
-  return Number.isNaN(date.getTime())
-    ? iso
-    : date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
 }

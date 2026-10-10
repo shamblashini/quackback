@@ -169,10 +169,13 @@ export const TRANSLATE_LANGUAGES = [
   { value: 'Arabic', label: 'العربية' },
   { value: 'Chinese (Simplified)', label: '简体中文' },
   { value: 'Chinese (Traditional)', label: '繁體中文' },
+  { value: 'Dutch', label: 'Nederlands' },
   { value: 'French', label: 'Français' },
   { value: 'German', label: 'Deutsch' },
+  { value: 'Polish', label: 'Polski' },
   { value: 'Portuguese (Brazilian)', label: 'Português (Brasil)' },
   { value: 'Spanish', label: 'Español' },
+  { value: 'Thai', label: 'ภาษาไทย' },
   { value: 'Ukrainian', label: 'Українська' },
 ] as const
 

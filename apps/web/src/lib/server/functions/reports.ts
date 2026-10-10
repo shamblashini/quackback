@@ -17,7 +17,7 @@ import { createServerFn } from '@tanstack/react-start'
 import type { BoardSettings } from '@/lib/server/db'
 import { getOptionalAuth, policyActorFromAuth } from './auth-helpers'
 import { resolvePortalAccessForRequest } from './portal-access'
-import { buildBoardPermissions, loadAllowAnonymous } from './portal'
+import { runBuildBoardPermissions, runLoadAllowAnonymous } from './portal'
 import { listPublicBoardsWithStats } from '@/lib/server/domains/boards/board.public'
 import { listPublicPostsWithVotesAndAvatars } from '@/lib/server/domains/posts/post.public'
 import { logger } from '@/lib/server/logger'
@@ -86,12 +86,12 @@ export const fetchReportsPageFn = createServerFn({ method: 'GET' })
         page: data.page ?? 1,
         limit: REPORTS_PAGE_SIZE,
       }),
-      loadAllowAnonymous(),
+      runLoadAllowAnonymous(),
     ])
 
     if (boardsRaw.length === 0) return EMPTY
 
-    const boardPermissions = await buildBoardPermissions(actor, boardsRaw, allowAnonymous)
+    const boardPermissions = await runBuildBoardPermissions(actor, boardsRaw, allowAnonymous)
 
     return {
       // The access matrix stays server-side, as on fetchPortalData (#191).

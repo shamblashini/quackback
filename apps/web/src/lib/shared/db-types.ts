@@ -41,6 +41,7 @@ export {
   CONVERSATION_END_REASONS,
   CONVERSATION_SPAM_FILED_BY,
   CONVERSATION_PRIORITIES,
+  CHANNELS,
   TEAM_ASSIGNMENT_METHODS,
   TICKET_TYPES,
   TICKET_STATUS_CATEGORIES,
@@ -53,6 +54,7 @@ export {
 } from '@quackback/db/types'
 export type {
   AccessTier,
+  Channel,
   BoardAccess,
   ModerationRuleValue,
   ReplyPolicy,
@@ -66,6 +68,17 @@ export type {
   UseCaseType,
   OnboardingOutcome,
   SetupState,
+  IdentitySource,
+  ProfileField,
+  ClaimRoleMapping,
+  ClaimRoleRule,
+  IdentityProviderClaimMapping,
+  SourceSnapshot,
+  SourceUnavailableReason,
+  CapturedIdentity,
+  IdentityProviderTestCapture,
+  IdentityProviderTestCaptureV1,
+  IdentityProviderTestCaptureV2,
 } from '@quackback/db/types'
 
 // Schema types needed by client components (type-only = no side effects)

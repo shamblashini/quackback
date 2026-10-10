@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { FormattedMessage } from 'react-intl'
 import {
   Dialog,
   DialogContent,
@@ -35,10 +36,13 @@ const LOCALE_LABELS: Record<string, string> = {
   fr: 'Français',
   es: 'Español',
   ar: 'العربية',
-  uk: 'Українська',
   'pt-br': 'Português (Brasil)',
   'zh-cn': '简体中文',
   'zh-tw': '繁體中文',
+  nl: 'Nederlands',
+  pl: 'Polski',
+  th: 'ภาษาไทย',
+  uk: 'Українська',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -86,7 +90,7 @@ export function ArticleTranslationsDialog({
             <DialogTitle>Translations</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            No additional locales are enabled yet. Enable one under Help Center settings &gt;
+            No additional locales are enabled yet. Enable one under Help center settings &gt;
             Domains &amp; languages.
           </p>
         </DialogContent>
@@ -121,6 +125,14 @@ export function ArticleTranslationsDialog({
                   statusesQuery.data?.find((s) => s.locale === locale)?.status ?? 'untranslated'
                 ]
               }
+            </span>
+          )}
+          {locale && statusesQuery.data?.find((s) => s.locale === locale)?.autoTranslatePaused && (
+            <span className="text-xs text-muted-foreground">
+              <FormattedMessage
+                id="admin.helpCenter.autoTranslatePaused"
+                defaultMessage="Paused: AI allowance used up"
+              />
             </span>
           )}
         </div>

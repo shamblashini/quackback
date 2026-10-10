@@ -15,6 +15,7 @@ import { NotFoundError } from '@/lib/shared/errors'
 
 // createServerFn → directly-callable fns (mirrors conversation-bulk.test.ts).
 vi.mock('@tanstack/react-start', () => ({
+  createServerOnlyFn: <T>(fn: T) => fn,
   createServerFn: () => {
     let _handler: ((args: { data: unknown }) => Promise<unknown>) | null = null
     const fn = (args: { data: unknown }) => {
@@ -122,6 +123,7 @@ vi.mock('@/lib/server/domains/settings/settings.assistant', () => ({
 }))
 
 vi.mock('@/lib/server/domains/assistant/assistant.principal', () => ({
+  ASSISTANT_DEFAULT_NAME: 'Quackback AI',
   ensureAssistantPrincipal: hoisted.ensureAssistantPrincipal,
 }))
 

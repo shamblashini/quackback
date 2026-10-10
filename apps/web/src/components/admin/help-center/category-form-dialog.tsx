@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { Suspense, useState, useEffect, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Dialog,
@@ -20,7 +20,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { CategoryIcon, ICON_MAP, ALL_ICON_KEYS } from '@/components/help-center/category-icon'
+import {
+  CategoryIcon,
+  loadCategoryIconMap,
+  useCategoryIconMap,
+} from '@/components/help-center/category-icon'
 import { SegmentMultiSelect } from '@/components/admin/segments/segment-multi-select'
 import { cn } from '@/lib/shared/utils'
 import { listSegmentsFn } from '@/lib/server/functions/admin'
@@ -48,10 +52,13 @@ const LOCALE_LABELS: Record<string, string> = {
   fr: 'Français',
   es: 'Español',
   ar: 'العربية',
-  uk: 'Українська',
   'pt-br': 'Português (Brasil)',
   'zh-cn': '简体中文',
   'zh-tw': '繁體中文',
+  nl: 'Nederlands',
+  pl: 'Polski',
+  th: 'ภาษาไทย',
+  uk: 'Українська',
 }
 
 /** Compact per-locale name/description editor (domains/languages §2). No
@@ -178,6 +185,43 @@ function iconLabel(key: string): string {
     .toLowerCase()
 }
 
+/** The picker's grid over the full icon set (loaded on demand), filtered by the search text. */
+function IconPickerGrid({
+  search,
+  selected,
+  onSelect,
+}: {
+  search: string
+  selected: string
+  onSelect: (key: string) => void
+}) {
+  const iconMap = useCategoryIconMap()
+  const keys = useMemo(() => {
+    const all = Object.keys(iconMap)
+    const q = search.toLowerCase().trim()
+    if (!q) return all
+    return all.filter((k) => iconLabel(k).includes(q))
+  }, [iconMap, search])
+
+  return keys.map((key) => {
+    const Icon = iconMap[key]
+    return (
+      <button
+        key={key}
+        type="button"
+        title={iconLabel(key)}
+        className={cn(
+          'h-8 w-8 rounded-md flex items-center justify-center hover:bg-muted transition-colors',
+          selected === key && 'bg-primary/15 ring-1 ring-inset ring-primary/30'
+        )}
+        onClick={() => onSelect(key)}
+      >
+        <Icon className="w-4 h-4" />
+      </button>
+    )
+  })
+}
+
 interface CategoryFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -212,11 +256,14 @@ export function CategoryFormDialog({
   const [isPublic, setIsPublic] = useState(true)
   const [segmentIds, setSegmentIds] = useState<string[]>([])
   const [parentId, setParentId] = useState<KbCategoryId | null>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
   const [iconSearch, setIconSearch] = useState('')
 
   useEffect(() => {
     if (open) {
+      // Fetch the picker's icon set now so it is ready when the picker opens.
+      loadCategoryIconMap().catch(() => {})
       setIcon(initialValues?.icon || DEFAULT_ICON)
       setName(initialValues?.name || '')
       setDescription(initialValues?.description || '')
@@ -264,12 +311,6 @@ export function CategoryFormDialog({
     })
   }, [allCategories, initialValues?.id])
 
-  const filteredIcons = useMemo(() => {
-    const q = iconSearch.toLowerCase().trim()
-    if (!q) return ALL_ICON_KEYS
-    return ALL_ICON_KEYS.filter((k) => iconLabel(k).includes(q))
-  }, [iconSearch])
-
   const isPending = createCategory.isPending || updateCategory.isPending
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -306,13 +347,10 @@ export function CategoryFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="sm:max-w-md"
-        // Radix focuses the first tabbable element, which is the icon picker
-        // button. Typing a name then goes nowhere and the first space opens the
-        // picker, so start in the name field instead.
-        onOpenAutoFocus={(e) => {
-          e.preventDefault()
-          document.getElementById('category-name')?.focus()
-        }}
+        // The dialog focuses the first tabbable element by default, which is the
+        // icon picker button. Typing a name then goes nowhere and the first space
+        // opens the picker, so start in the name field instead.
+        initialFocus={nameInputRef}
       >
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit category' : 'New category'}</DialogTitle>
@@ -349,31 +387,22 @@ export function CategoryFormDialog({
                     className="mb-2 h-8 text-sm"
                   />
                   <div className="grid grid-cols-8 gap-1 max-h-[288px] overflow-y-auto">
-                    {filteredIcons.map((key) => {
-                      const Icon = ICON_MAP[key]
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          title={iconLabel(key)}
-                          className={cn(
-                            'h-8 w-8 rounded-md flex items-center justify-center hover:bg-muted transition-colors',
-                            icon === key && 'bg-primary/15 ring-1 ring-inset ring-primary/30'
-                          )}
-                          onClick={() => {
-                            setIcon(key)
-                            setIconPickerOpen(false)
-                            setIconSearch('')
-                          }}
-                        >
-                          <Icon className="w-4 h-4" />
-                        </button>
-                      )
-                    })}
+                    <Suspense fallback={<div className="col-span-8 h-[288px]" />}>
+                      <IconPickerGrid
+                        search={iconSearch}
+                        selected={icon}
+                        onSelect={(key) => {
+                          setIcon(key)
+                          setIconPickerOpen(false)
+                          setIconSearch('')
+                        }}
+                      />
+                    </Suspense>
                   </div>
                 </PopoverContent>
               </Popover>
               <Input
+                ref={nameInputRef}
                 id="category-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}

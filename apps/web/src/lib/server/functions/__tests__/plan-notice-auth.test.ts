@@ -11,6 +11,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { PERMISSIONS } from '@/lib/shared/permissions'
+import { TRIAL_CHOICE_GATE_FROM } from '@/lib/shared/billing/trial-state'
 import type { StoredCloudConfig } from '@/lib/shared/db-types'
 
 const hoisted = vi.hoisted(() => ({
@@ -133,7 +134,7 @@ describe('getPlanNotice — the trial countdown', () => {
     enabled: true,
     projection: {
       version: 1,
-      effectivePlan: 'pro',
+      effectivePlan: 'business',
       trialStartedAt: STARTED,
       trialExpiresAt: ENDS,
       subscriptionStatus: null,
@@ -152,6 +153,15 @@ describe('getPlanNotice — the trial countdown', () => {
     hoisted.mockRequireAuth.mockResolvedValue({
       user: { id: 'usr_member' },
       principal: { id: 'prn_member', role: 'member' },
+      permissions: [PERMISSIONS.MEMBER_VIEW],
+    })
+  }
+
+  function asBillingManager(): void {
+    hoisted.mockRequireAuth.mockResolvedValue({
+      user: { id: 'usr_admin' },
+      principal: { id: 'prn_admin', role: 'admin' },
+      permissions: [PERMISSIONS.MEMBER_VIEW, PERMISSIONS.BILLING_MANAGE],
     })
   }
 
@@ -170,34 +180,116 @@ describe('getPlanNotice — the trial countdown', () => {
   it('counts down while the trial is running', async () => {
     hoisted.mockGetWorkspaceSettings.mockResolvedValue({ settings: { cloud: trialing } })
     await expect(getPlanNoticeHandler()).resolves.toEqual(
-      expect.objectContaining({ label: 'Pro trial', expiresAt: ENDS })
+      expect.objectContaining({ label: 'Business trial', expiresAt: ENDS })
     )
   })
 
-  it('keeps a calm ended banner for seven days after expiry', async () => {
+  it('re-reads cloud config after reporting a starter trial', async () => {
+    const preTrial = {
+      ...trialing,
+      projection: {
+        ...trialing.projection,
+        trialStartedAt: null,
+        trialExpiresAt: null,
+        planLimitsExpireAt: null,
+      },
+    }
+    hoisted.mockGetWorkspaceSettings
+      .mockResolvedValueOnce({ settings: { cloud: preTrial } })
+      .mockResolvedValueOnce({ settings: { cloud: trialing } })
+    await expect(getPlanNoticeHandler()).resolves.toEqual(
+      expect.objectContaining({ label: 'Business trial', expiresAt: ENDS })
+    )
+  })
+
+  it('keeps a persistent ended banner after expiry', async () => {
     vi.setSystemTime(AFTER)
-    hoisted.mockFetchCatalogue.mockResolvedValue({ lastTrialPlanId: 'pro' })
+    asBillingManager()
+    hoisted.mockFetchCatalogue.mockResolvedValue({ lastTrialPlanId: 'business' })
     hoisted.mockGetWorkspaceSettings.mockResolvedValue({ settings: { cloud: trialing } })
     await expect(getPlanNoticeHandler()).resolves.toEqual(
       expect.objectContaining({
-        label: 'Pro trial',
-        dismissible: true,
-        actionLabel: 'Continue with Pro',
+        label: 'Business trial ended',
+        ended: true,
+        actionLabel: 'Choose a plan',
+        choiceDueAt: new Date(
+          Math.max(Date.parse(ENDS) + 2 * 86_400_000, TRIAL_CHOICE_GATE_FROM)
+        ).toISOString(),
       })
     )
   })
 
-  it('drops the ended banner after seven days, with the row unchanged', async () => {
-    vi.setSystemTime(new Date('2026-03-23T00:00:00.000Z'))
+  it('tells a teammate who cannot manage billing, without a button they could not use', async () => {
+    vi.setSystemTime(AFTER)
+    hoisted.mockFetchCatalogue.mockResolvedValue({ lastTrialPlanId: 'business' })
     hoisted.mockGetWorkspaceSettings.mockResolvedValue({ settings: { cloud: trialing } })
-    await expect(getPlanNoticeHandler()).resolves.toBeNull()
+    const notice = await getPlanNoticeHandler()
+    expect(notice).toEqual(
+      expect.objectContaining({
+        label: 'Business trial ended',
+        ended: true,
+        message: expect.stringMatching(/workspace owner needs to choose a plan/),
+      })
+    )
+    expect(notice).not.toHaveProperty('actionUrl')
+    expect(notice).not.toHaveProperty('choiceDueAt')
   })
 
-  it('never talks over a notice the operator set', async () => {
+  it('still shows the ended banner more than seven days later', async () => {
+    vi.setSystemTime(new Date('2026-03-23T00:00:00.000Z'))
+    asBillingManager()
+    hoisted.mockFetchCatalogue.mockResolvedValue({ lastTrialPlanId: 'business' })
+    hoisted.mockGetWorkspaceSettings.mockResolvedValue({ settings: { cloud: trialing } })
+    await expect(getPlanNoticeHandler()).resolves.toEqual(
+      expect.objectContaining({
+        label: 'Business trial ended',
+        ended: true,
+        actionLabel: 'Choose a plan',
+      })
+    )
+  })
+
+  it('never talks over a self-host operator notice', async () => {
     const notice = { label: 'Scheduled maintenance', message: 'Back at 09:00 UTC' }
     hoisted.mockGetTierLimits.mockResolvedValue({ notice })
-    hoisted.mockGetWorkspaceSettings.mockResolvedValue({ settings: { cloud: trialing } })
+    hoisted.mockGetWorkspaceSettings.mockResolvedValue({
+      settings: { cloud: { ...trialing, enabled: false } },
+    })
     await expect(getPlanNoticeHandler()).resolves.toEqual(notice)
+  })
+
+  it('does not let a leftover Free trial strip talk over a complimentary grant', async () => {
+    hoisted.mockGetTierLimits.mockResolvedValue({
+      notice: {
+        label: 'Free trial',
+        expiresAt: '2026-08-30T09:36:53.964Z',
+        actionUrl: 'https://app.quackback.io/dashboard/org_x/choose-plan',
+        actionLabel: 'Choose your plan',
+      },
+    })
+    hoisted.mockGetWorkspaceSettings.mockResolvedValue({
+      settings: {
+        cloud: {
+          enabled: true,
+          projection: {
+            version: 7,
+            effectivePlan: 'scale',
+            trialStartedAt: null,
+            trialExpiresAt: null,
+            subscriptionStatus: null,
+            entitlements: { customDomain: true },
+            freeLimits: limits,
+            planLimits: limits,
+            planLimitsExpireAt: '2026-09-30T23:33:31.110Z',
+            canUpgrade: true,
+            canManageBilling: true,
+            renewalAt: null,
+            cancellationAt: '2026-09-30T23:33:31.110Z',
+          },
+        },
+      },
+    })
+    await expect(getPlanNoticeHandler()).resolves.toBeNull()
   })
 
   it('says nothing on an install with no cloud config', async () => {

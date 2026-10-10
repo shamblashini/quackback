@@ -12,7 +12,6 @@ import { useForm } from 'react-hook-form'
 import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import {
-  ChatBubbleLeftEllipsisIcon,
   ChatBubbleLeftIcon,
   CheckIcon,
   ChevronDownIcon,
@@ -31,8 +30,8 @@ import {
 } from '@heroicons/react/24/solid'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
-import { BoardSettingsSaveDock } from './board-settings-save-dock'
-import { FormError } from '@/components/shared/form-error'
+import { SettingRow } from '@/components/admin/settings/setting-row'
+import { useDebouncedSave } from '@/lib/client/hooks/use-debounced-save'
 import { useUpdateBoardAccess } from '@/lib/client/mutations'
 import { useSegments } from '@/lib/client/hooks/use-segments-queries'
 import { settingsQueries } from '@/lib/client/queries/settings'
@@ -47,6 +46,7 @@ import {
   resolveReplyPolicy,
 } from '@/lib/shared/db-types'
 import { accessForPreset } from '@/lib/shared/schemas/boards'
+import { INLINE_LINK } from '@/components/admin/settings/inline-link'
 
 /**
  * Per-board access form (R3 design).
@@ -65,9 +65,8 @@ import { accessForPreset } from '@/lib/shared/schemas/boards'
  *     ceiling: when off, the `anonymous` cell on vote/comment/submit is
  *     disabled (striped + globe icon) and an effect auto-bumps any cell
  *     currently on `anonymous` up to `authenticated`.
- *   - A "Replies" switch below the matrix edits `access.replyPolicy`
- *     (absent/`anyone` vs `author-only`). It shares this form's dirty
- *     state and save dock — the Access tab has exactly one of each.
+ *   - A switch below the matrix edits `access.replyPolicy` (absent or
+ *     `anyone` vs `author-only`) and autosaves with the rest of the form.
  *
  * The persisted shape is `BoardAccess` (see @/lib/shared/db-types).
  */
@@ -81,25 +80,23 @@ interface TierMeta {
   icon: React.ComponentType<{ className?: string }>
 }
 
-// Tier icons use semantic muted token; the open→restrictive color ramp is
-// shown once on the legend swatch only (a documented data-viz exception),
-// so it stays out of the matrix cells where it would not theme correctly.
+// Tier icons use the semantic muted token so the matrix themes correctly.
 const TIERS: readonly TierMeta[] = [
   {
     id: 'anonymous',
-    label: 'Anyone',
-    blurb: 'Public · no sign-in',
+    label: 'Everyone',
+    blurb: 'No sign-in needed',
     icon: GlobeAltIcon,
   },
   {
     id: 'authenticated',
-    label: 'Signed-in',
-    blurb: 'Any logged-in user',
+    label: 'Signed-in users',
+    blurb: 'Any signed-in user',
     icon: UsersIcon,
   },
   {
     id: 'segments',
-    label: 'Segments',
+    label: 'Specific segments',
     blurb: 'Specific audiences',
     icon: TagIcon,
   },
@@ -151,14 +148,14 @@ function tiersForPreset(id: Exclude<PresetName, 'custom'>): Record<ActionId, Acc
 export const PRESET_META: readonly PresetMeta[] = [
   {
     id: 'public',
-    label: 'Public',
+    label: 'Everyone',
     description: 'Anyone can view. Sign-in is required to vote, comment, or submit.',
     icon: GlobeAltIcon,
     tiers: tiersForPreset('public'),
   },
   {
     id: 'private',
-    label: 'Private',
+    label: 'Team only',
     description: 'Only workspace members can access this board. Hidden from the portal.',
     icon: LockClosedIcon,
     tiers: tiersForPreset('private'),
@@ -209,6 +206,23 @@ function deriveActivePreset(values: FormShape): PresetName {
   return 'custom'
 }
 
+const AUTOSAVE_DELAY_MS = 400
+
+/**
+ * `access.replyPolicy` sits beside the matrix rather than in it because it is
+ * not a tier: the Comment row still decides who may comment at all, and this
+ * narrows that set per post.
+ */
+const REPLY_POLICY_LABEL = 'Only the post author and team members can reply'
+
+/**
+ * `access.kind` toggle. A report board moves off the feedback feed and
+ * roadmaps onto the portal's /reports page; every report and the team's
+ * replies stay public, only the reporter and the team can reply, and a
+ * reporter can't delete a report once filed.
+ */
+const REPORT_BOARD_LABEL = 'Public report board'
+
 // ─── Main form ────────────────────────────────────────────────────────
 
 export function BoardAccessForm({ board }: BoardAccessFormProps) {
@@ -238,37 +252,51 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
 
   const [openPicker, setOpenPicker] = useState<ActionId | null>(null)
 
-  // Sync form state when the server-side board.access changes (e.g. after a
-  // successful save invalidates the boards query).
-  const accessKey = JSON.stringify(board.access)
-  useEffect(() => {
-    const next = board.access ?? DEFAULT_BOARD_ACCESS
+  // Changes are sent once, after a short pause. The form re-baselines on the
+  // value it sends, so undoing an edit after it was sent counts as a new edit.
+  const { queue, cancel, hasPending } = useDebouncedSave<FormShape>((next) => {
+    mutation.mutate({ boardId: board.id, access: next })
     form.reset(next)
-    setOpenPicker(null)
-  }, [accessKey, board.access, form])
+  }, AUTOSAVE_DELAY_MS)
 
-  const values = form.watch()
-
-  // Auto-bump: when the workspace `allowAnonymous` master switch flips
-  // off, any of vote/comment/submit currently set to 'anonymous' gets
-  // bumped to 'authenticated' together. The bumped form is dirty so the
-  // user sees the save dock and can confirm or discard. We read the
-  // current tier via `form.getValues()` so the effect doesn't have to
-  // depend on `values` (which would re-fire on every keystroke / cell
-  // click).
-  useEffect(() => {
+  // Workspace ceiling: when `allowAnonymous` is off, vote/comment/submit cannot
+  // sit on 'anonymous', so the form shows them as 'authenticated'. The shown
+  // value is not marked dirty: opening the page saves nothing, and the next
+  // edit carries the bumped values with it. `form.getValues()` is read so the
+  // callback does not depend on `values`.
+  const applyCeiling = useCallback(() => {
     if (wsAllowAnonymous) return
     ANON_CEILING_ACTIONS.forEach((id) => {
       if (form.getValues(id) === 'anonymous') {
-        form.setValue(id, 'authenticated', { shouldDirty: true })
-        form.setValue(`segments.${id}`, [], { shouldDirty: true })
+        form.setValue(id, 'authenticated')
+        form.setValue(`segments.${id}`, [])
       }
     })
   }, [wsAllowAnonymous, form])
 
+  // Sync form state when the server-side board.access changes (e.g. after a
+  // successful save invalidates the boards query). A refetch never replaces
+  // edits that are unsaved, queued or in flight.
+  const accessKey = JSON.stringify(board.access)
+  const saving = mutation.isPending
+  useEffect(() => {
+    const next = board.access ?? DEFAULT_BOARD_ACCESS
+    const matches = JSON.stringify(form.getValues()) === JSON.stringify(next)
+    if (!matches && (form.formState.isDirty || hasPending() || saving)) return
+    form.reset(next)
+    applyCeiling()
+    setOpenPicker(null)
+  }, [accessKey, board.access, form, saving, hasPending, applyCeiling])
+
+  useEffect(() => {
+    applyCeiling()
+  }, [applyCeiling])
+
+  const values = form.watch()
+
   // Same auto-bump for a report board saved before reports required an
-  // account: an "Anyone" submit/comment tier is raised to signed-in, leaving
-  // the form dirty so the admin confirms it (the schema rejects the old shape).
+  // account: an "Anyone" submit/comment tier is raised to signed-in and marked
+  // dirty, so the autosave stores the fix (the schema rejects the old shape).
   const isReportBoardForm = resolveBoardKind(values) === 'reports'
   useEffect(() => {
     if (!isReportBoardForm) return
@@ -311,9 +339,8 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
       const meta = PRESET_META.find((p) => p.id === id)
       if (!meta) return
       // Apply via setValue (not form.reset) so the change is tracked as
-      // dirty and the save bar appears. reset() re-baselines defaultValues,
-      // leaving isDirty false — which silently hides the save dock after a
-      // preset click. moderation is left untouched (owned by the Moderation
+      // dirty and autosaves. reset() re-baselines defaultValues, leaving
+      // isDirty false, so a preset click would never be saved. moderation is left untouched (owned by the Moderation
       // sub-tab); presets target the access matrix only.
       const opts = { shouldDirty: true } as const
       ACTIONS.forEach((a) => form.setValue(a.id, meta.tiers[a.id], opts))
@@ -423,62 +450,60 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
     [form]
   )
 
-  const onSubmit = useCallback(
-    (next: FormShape) => {
-      if (segsError) return
-      // Spread the server-side access under the form values so any key this
-      // form doesn't edit (moderation, and anything added later) round-trips
-      // verbatim instead of being dropped by a partial save.
-      mutation.mutate({ boardId: board.id, access: { ...board.access, ...next } })
-    },
-    [board.id, board.access, mutation, segsError]
-  )
-
-  const handleDiscard = useCallback(() => {
-    const original = board.access ?? DEFAULT_BOARD_ACCESS
-    form.reset(original)
-    setOpenPicker(null)
-  }, [board.access, form])
+  // Changes save after a short pause, once every Segments tier has a segment.
+  // Returning to the saved values leaves nothing to save, so a queued save for
+  // the undone edit is dropped.
+  const valuesKey = JSON.stringify(values)
+  useEffect(() => {
+    if (!dirty) cancel()
+    else if (!segsError) queue(form.getValues())
+  }, [valuesKey, dirty, segsError, form, queue, cancel])
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pb-24">
-      {mutation.isError && <FormError message={mutation.error?.message ?? 'An error occurred'} />}
-
+    <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
       <div className="space-y-4">
-        <span className="text-sm font-semibold">Purpose</span>
-        <ReportBoardRow
-          on={resolveBoardKind(values) === 'reports'}
-          publicView={values.view === 'anonymous'}
-          onChange={handleReportBoardChange}
+        <SettingRow
+          label={REPORT_BOARD_LABEL}
+          htmlFor="board-report-kind"
+          description={
+            <>
+              Lists this board&apos;s posts on the portal&apos;s{' '}
+              <span className="font-mono text-foreground">/reports</span> page instead of the
+              feedback feed and roadmaps. Every report and your team&apos;s replies stay public,
+              filing and replying need an account, only the reporter and your team can reply, and
+              reporters can&apos;t delete a report once filed.
+            </>
+          }
+          control={
+            <Switch
+              id="board-report-kind"
+              checked={resolveBoardKind(values) === 'reports'}
+              onCheckedChange={handleReportBoardChange}
+            />
+          }
         />
+        {resolveBoardKind(values) === 'reports' && values.view !== 'anonymous' && (
+          <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
+            <InformationCircleIcon className="size-4 shrink-0" />
+            <span>
+              Reports are only readable by the View tier below. Set View to{' '}
+              <span className="text-foreground">Anyone</span> to make them public to the whole
+              community.
+            </span>
+          </p>
+        )}
       </div>
 
       <div className="space-y-4">
-        <p className="text-xs text-muted-foreground max-w-xl">
-          Pick a preset, or tweak any cell to fine-tune. Custom is set automatically when your
-          configuration doesn&apos;t match a preset.
+        <p className="text-[13px] text-muted-foreground">
+          Pick a preset, or change any cell to fine-tune.
         </p>
 
         <PresetGrid active={activePreset} onSelect={handlePresetClick} />
       </div>
 
       <div className="space-y-4">
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-sm font-semibold">Per-action permissions</span>
-          <span className="text-xs text-muted-foreground inline-flex items-center gap-1.5">
-            {/* Legend swatch: the open→restrictive color ramp is a deliberate
-                data-viz signal and is the sole sanctioned literal-color use
-                in this form (it never appears in the themed matrix cells). */}
-            <span
-              className="inline-block h-1 w-5 rounded-sm"
-              style={{
-                background:
-                  'linear-gradient(to right, rgb(74 222 128), rgb(250 204 21), rgb(248 113 113))',
-              }}
-            />
-            More open <span className="opacity-60">→</span> More restrictive
-          </span>
-        </div>
+        <span className="block text-sm font-semibold">Per-action permissions</span>
 
         <Matrix
           values={values}
@@ -496,7 +521,7 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
           <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             <GlobeAltIcon className="h-3 w-3 shrink-0" />
             <span>
-              Workspace policy disables the <span className="text-foreground">Anyone</span> tier
+              Workspace policy disables the <span className="text-foreground">Everyone</span> tier
               for:{' '}
               <span className="text-foreground">
                 {wsBlockedActions.map((a) => a.label).join(', ')}
@@ -506,7 +531,7 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
             <Link
               to="/admin/settings/security/authentication"
               search={{ tab: 'portal-access' }}
-              className="ml-auto whitespace-nowrap text-primary hover:underline"
+              className={`${INLINE_LINK} ml-auto whitespace-nowrap`}
             >
               Workspace access →
             </Link>
@@ -514,139 +539,33 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
         )}
       </div>
 
-      <div className="space-y-4">
-        <span className="text-sm font-semibold">Replies</span>
-        <ReplyPolicyRow
-          authorOnly={resolveReplyPolicy(values) === 'author-only'}
-          locked={resolveBoardKind(values) === 'reports'}
-          onChange={handleReplyPolicyChange}
-        />
-      </div>
+      <SettingRow
+        label={REPLY_POLICY_LABEL}
+        htmlFor="board-reply-policy"
+        description={
+          resolveBoardKind(values) === 'reports' ? 'Always on for a report board.' : undefined
+        }
+        control={
+          <Switch
+            id="board-reply-policy"
+            checked={resolveReplyPolicy(values) === 'author-only'}
+            disabled={resolveBoardKind(values) === 'reports'}
+            onCheckedChange={handleReplyPolicyChange}
+          />
+        }
+      />
 
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <ShieldCheckIcon className="h-3 w-3" />
-        Team members and admins always have full access — they bypass these rules.
+        Team members and admins always have full access. They bypass these rules.
       </p>
 
-      <BoardSettingsSaveDock
-        dirty={dirty}
-        error={segsError}
-        errorMessage="Some rules use Segments but no segments are selected."
-        saving={mutation.isPending}
-        onDiscard={handleDiscard}
-      />
-    </form>
-  )
-}
-
-// ─── Replies (author-only) row ───────────────────────────────────────
-
-interface ReplyPolicyRowProps {
-  authorOnly: boolean
-  /** Forced on by the report-board purpose; the switch is shown but inert. */
-  locked?: boolean
-  onChange: (authorOnly: boolean) => void
-}
-
-const REPLY_POLICY_LABEL = 'Only the post author and team members can reply'
-
-/**
- * `access.replyPolicy` toggle. It sits beside the matrix rather than in it
- * because it is not a tier: the Comment row still decides who may reply at
- * all, and this narrows that set per post. Rendered inside the access form so
- * it shares one dirty state and one save dock with the matrix.
- */
-function ReplyPolicyRow({ authorOnly, locked = false, onChange }: ReplyPolicyRowProps) {
-  return (
-    <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 px-4 py-3.5 sm:flex-row sm:items-center">
-      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
-        <ChatBubbleLeftEllipsisIcon className="h-3.5 w-3.5" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">{REPLY_POLICY_LABEL}</span>
-          {authorOnly && (
-            <span className="rounded border border-primary/30 bg-primary/10 px-1.5 py-px text-xs font-semibold uppercase tracking-wider text-primary">
-              On
-            </span>
-          )}
-        </div>
-        <div className="mt-0.5 text-xs leading-snug text-muted-foreground">
-          Anyone the access tiers allow can still view and open posts, but each post&apos;s thread
-          stays between its author and your team.
-          {locked && ' Always on for a report board.'}
-        </div>
-      </div>
-      <Switch
-        checked={authorOnly}
-        disabled={locked}
-        onCheckedChange={onChange}
-        aria-label={REPLY_POLICY_LABEL}
-        className="shrink-0 sm:ml-3"
-      />
-    </div>
-  )
-}
-
-// ─── Report board (purpose) row ──────────────────────────────────────
-
-interface ReportBoardRowProps {
-  on: boolean
-  /** Whether logged-out visitors can read the board (the transparency goal). */
-  publicView: boolean
-  onChange: (on: boolean) => void
-}
-
-const REPORT_BOARD_LABEL = 'Public report board'
-
-/**
- * `access.kind` toggle. A report board moves off the feedback feed and
- * roadmaps onto the portal's /reports page; every report and the team's
- * replies stay public, only the reporter and the team can reply, and a
- * reporter can't delete a report once filed.
- */
-function ReportBoardRow({ on, publicView, onChange }: ReportBoardRowProps) {
-  return (
-    <div className="rounded-lg border bg-muted/20 px-4 py-3.5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
-          <ShieldCheckIcon className="h-3.5 w-3.5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{REPORT_BOARD_LABEL}</span>
-            {on && (
-              <span className="rounded border border-primary/30 bg-primary/10 px-1.5 py-px text-xs font-semibold uppercase tracking-wider text-primary">
-                On
-              </span>
-            )}
-          </div>
-          <div className="mt-0.5 text-xs leading-snug text-muted-foreground">
-            Lists this board&apos;s posts on the portal&apos;s{' '}
-            <span className="font-mono text-foreground">/reports</span> page instead of the feedback
-            feed and roadmaps. Every report and your team&apos;s replies stay public, filing and
-            replying need an account, only the reporter and your team can reply, and reporters
-            can&apos;t delete a report once filed.
-          </div>
-        </div>
-        <Switch
-          checked={on}
-          onCheckedChange={onChange}
-          aria-label={REPORT_BOARD_LABEL}
-          className="shrink-0 sm:ml-3"
-        />
-      </div>
-      {on && !publicView && (
-        <div className="mt-3 flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-xs text-muted-foreground">
-          <InformationCircleIcon className="h-3 w-3 shrink-0" />
-          <span>
-            Reports are only readable by the View tier below. Set View to{' '}
-            <span className="text-foreground">Anyone</span> to make them public to the whole
-            community.
-          </span>
-        </div>
+      {segsError && (
+        <p role="alert" className="text-xs text-destructive">
+          Some rules use Segments but no segments are selected.
+        </p>
       )}
-    </div>
+    </form>
   )
 }
 
@@ -774,16 +693,16 @@ function Matrix({
         aria-label="Permissions matrix"
       >
         <div
-          className="grid min-w-[560px] bg-muted/40 border-b text-xs uppercase tracking-wider text-muted-foreground"
+          className="grid min-w-[560px] bg-muted/40 border-b text-xs text-muted-foreground"
           style={{ gridTemplateColumns: '1.5fr repeat(4, 1fr)' }}
         >
           <div className="px-4 py-2.5 font-medium">Action</div>
           {TIERS.map((t) => (
             <div
               key={t.id}
-              className="flex flex-col items-center justify-center gap-0.5 border-l py-2 text-center normal-case"
+              className="flex flex-col items-center justify-start gap-0.5 border-l px-1 py-2.5 text-center"
             >
-              <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+              <div className="flex items-center gap-1.5 whitespace-nowrap text-sm font-semibold text-foreground">
                 <span className="text-muted-foreground">
                   <t.icon className="h-3 w-3" />
                 </span>
@@ -1172,7 +1091,7 @@ function SegmentPicker({
             {selected.length}/{allSegments.length} selected
           </span>
         </span>
-        <Link to="/admin/users" className="text-primary hover:underline">
+        <Link to="/admin/users" className={INLINE_LINK}>
           Manage →
         </Link>
       </div>
