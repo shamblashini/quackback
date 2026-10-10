@@ -14,7 +14,6 @@ export const WIDGET_LOCALES = [
   'de',
   'es',
   'ar',
-  'ru',
   'uk',
   'pt-BR',
   'zh-CN',
