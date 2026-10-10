@@ -6,6 +6,7 @@ import { CheckIcon, ChevronRightIcon, CircleIcon } from 'lucide-react'
 
 import { asChildRender } from '@/components/ui/as-child'
 import { cn } from '@/lib/shared/utils/index'
+import { POPOVER_LAYER } from '@/components/ui/z-index'
 
 function ContextMenu({ ...props }: ContextMenuPrimitive.Root.Props) {
   return <ContextMenuPrimitive.Root data-slot="context-menu" {...props} />
@@ -79,7 +80,7 @@ function ContextMenuSubContent({
   return (
     <ContextMenuPrimitive.Portal>
       <ContextMenuPrimitive.Positioner
-        className="isolate z-50 outline-none"
+        className={cn('isolate outline-none', POPOVER_LAYER)}
         align={align}
         side={side}
       >
@@ -99,7 +100,7 @@ function ContextMenuSubContent({
 function ContextMenuContent({ className, ...props }: ContextMenuPrimitive.Popup.Props) {
   return (
     <ContextMenuPrimitive.Portal>
-      <ContextMenuPrimitive.Positioner className="isolate z-50 outline-none">
+      <ContextMenuPrimitive.Positioner className={cn('isolate outline-none', POPOVER_LAYER)}>
         <ContextMenuPrimitive.Popup
           data-slot="context-menu-content"
           className={cn(

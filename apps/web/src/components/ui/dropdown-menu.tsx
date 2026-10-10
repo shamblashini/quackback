@@ -9,6 +9,7 @@ import {
   useOverlayOpenedRoot,
 } from '@/components/ui/overlay-opened'
 import { cn } from '@/lib/shared/utils'
+import { POPOVER_LAYER } from '@/components/ui/z-index'
 
 function DropdownMenu({ open, defaultOpen, onOpenChange, ...props }: MenuPrimitive.Root.Props) {
   const opened = useOverlayOpenedRoot(open, defaultOpen, onOpenChange)
@@ -70,7 +71,7 @@ function DropdownMenuContent({
   return (
     <MenuPrimitive.Portal>
       <MenuPrimitive.Positioner
-        className="isolate z-50 outline-none"
+        className={cn('isolate outline-none', POPOVER_LAYER)}
         align={align}
         alignOffset={alignOffset}
         side={side}
@@ -296,7 +297,7 @@ function DropdownMenuSubContent({
   return (
     <MenuPrimitive.Portal>
       <MenuPrimitive.Positioner
-        className="isolate z-50 outline-none"
+        className={cn('isolate outline-none', POPOVER_LAYER)}
         align={align}
         alignOffset={alignOffset}
         side={side}

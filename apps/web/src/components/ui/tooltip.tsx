@@ -7,6 +7,7 @@ import {
   useOverlayOpenedRoot,
 } from '@/components/ui/overlay-opened'
 import { cn } from '@/lib/shared/utils'
+import { POPOVER_LAYER } from '@/components/ui/z-index'
 
 function TooltipProvider({ delay = 0, ...props }: TooltipPrimitive.Provider.Props) {
   return <TooltipPrimitive.Provider data-slot="tooltip-provider" delay={delay} {...props} />
@@ -69,7 +70,7 @@ function TooltipContent({
         sideOffset={sideOffset}
         align={align}
         alignOffset={alignOffset}
-        className="isolate z-50"
+        className={cn('isolate', POPOVER_LAYER)}
       >
         <TooltipPrimitive.Popup
           data-slot="tooltip-content"

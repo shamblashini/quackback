@@ -3,6 +3,7 @@ import { Select as SelectPrimitive } from '@base-ui/react/select'
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/24/solid'
 
 import { cn } from '@/lib/shared/utils'
+import { POPOVER_LAYER } from '@/components/ui/z-index'
 
 type SelectItemRecord = { label: React.ReactNode; value: unknown }
 
@@ -283,7 +284,7 @@ function SelectContent({
         align={align}
         alignOffset={alignOffset}
         alignItemWithTrigger={position !== 'popper'}
-        className="isolate z-50"
+        className={cn('isolate', POPOVER_LAYER)}
       >
         <SelectPrimitive.Popup
           data-slot="select-content"

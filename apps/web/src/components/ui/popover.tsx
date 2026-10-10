@@ -8,6 +8,7 @@ import {
   useOverlayOpenedRoot,
 } from '@/components/ui/overlay-opened'
 import { cn } from '@/lib/shared/utils'
+import { POPOVER_LAYER } from '@/components/ui/z-index'
 
 /**
  * When a Popover is inside a Dialog, we portal to the dialog content element
@@ -147,7 +148,7 @@ function PopoverContent({
         side={side}
         sideOffset={sideOffset}
         anchor={anchor ?? undefined}
-        className="isolate z-50"
+        className={cn('isolate', POPOVER_LAYER)}
       >
         <PopoverPrimitive.Popup
           data-slot="popover-content"
