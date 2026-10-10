@@ -16,13 +16,11 @@ import {
   LinkIcon,
 } from '@heroicons/react/24/outline'
 import type { ChangelogId, PrincipalId, PostId } from '@quackback/ids'
-import { stripMarkdownPreview } from '@/lib/shared/utils'
 import { toIsoDateOnly } from '@/lib/shared/utils/date'
 
 interface ChangelogListItemProps {
   id: ChangelogId
   title: string
-  content: string
   status: 'draft' | 'scheduled' | 'published'
   publishedAt: string | null
   displayDate?: string | null
@@ -50,7 +48,6 @@ const STATUS_CONFIG = {
 export function ChangelogListItem({
   id,
   title,
-  content,
   status,
   publishedAt,
   displayDate,
@@ -61,7 +58,6 @@ export function ChangelogListItem({
   onDelete,
 }: ChangelogListItemProps) {
   const config = STATUS_CONFIG[status]
-  const contentPreview = stripMarkdownPreview(content, 150)
   const portalDisplayDate =
     status === 'published' &&
     displayDate &&
@@ -84,9 +80,6 @@ export function ChangelogListItem({
 
         {/* Title */}
         <h3 className="font-semibold text-base text-foreground line-clamp-1">{title}</h3>
-
-        {/* Content preview */}
-        <p className="text-sm text-muted-foreground/60 line-clamp-1 mt-1">{contentPreview}</p>
 
         {/* Meta row */}
         <div className="flex items-center text-muted-foreground gap-2 text-xs mt-2.5">

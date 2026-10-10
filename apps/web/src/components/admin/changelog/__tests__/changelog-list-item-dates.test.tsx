@@ -27,7 +27,6 @@ describe('ChangelogListItem published date', () => {
       <ChangelogListItem
         id={'changelog_1' as ChangelogId}
         title="Faster search"
-        content="Search is faster."
         status="published"
         publishedAt="2026-09-20T10:00:00.000Z"
         displayDate="2026-10-01T12:00:00.000Z"
