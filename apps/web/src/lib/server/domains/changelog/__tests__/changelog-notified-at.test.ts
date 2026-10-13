@@ -78,6 +78,12 @@ vi.mock('@/lib/server/events/scheduler', () => ({
   scheduleDispatch: vi.fn().mockResolvedValue(undefined),
   cancelScheduledDispatch: vi.fn().mockResolvedValue(undefined),
 }))
+vi.mock('@/lib/server/storage/s3', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/server/storage/s3')>()),
+  getEmailSafeUrl: vi.fn((key: string | null | undefined) =>
+    key ? `https://assets.example.com/${key}?email=1` : null
+  ),
+}))
 vi.mock('@/lib/server/config', () => ({
   config: { s3PublicUrl: undefined, baseUrl: 'http://localhost:3000' },
   getBaseUrl: () => 'http://localhost:3000',
@@ -133,6 +139,50 @@ describe('notifyChangelogPublished (atomic claim)', () => {
         publishedAt: expect.any(Date),
         linkedPostCount: 0,
       }),
+      { rethrow: true }
+    )
+  })
+
+  it('dispatches a null featured image when the entry has none', async () => {
+    mockClaimResult = [baseEntry({ featuredImageUrl: null })]
+    const { notifyChangelogPublished } = await import('../changelog.service')
+    const { dispatchChangelogPublished } = await import('@/lib/server/events/dispatch')
+
+    await notifyChangelogPublished(ENTRY_ID, ACTOR)
+
+    expect(dispatchChangelogPublished).toHaveBeenCalledWith(
+      ACTOR,
+      expect.objectContaining({ featuredImageUrl: null }),
+      { rethrow: true }
+    )
+  })
+
+  it('dispatches a stored featured image as an absolute, directly served URL', async () => {
+    mockClaimResult = [baseEntry({ featuredImageUrl: '/api/storage/changelog/cover.png' })]
+    const { notifyChangelogPublished } = await import('../changelog.service')
+    const { dispatchChangelogPublished } = await import('@/lib/server/events/dispatch')
+
+    await notifyChangelogPublished(ENTRY_ID, ACTOR)
+
+    expect(dispatchChangelogPublished).toHaveBeenCalledWith(
+      ACTOR,
+      expect.objectContaining({
+        featuredImageUrl: 'https://assets.example.com/changelog/cover.png?email=1',
+      }),
+      { rethrow: true }
+    )
+  })
+
+  it('passes an external featured image URL through unchanged', async () => {
+    mockClaimResult = [baseEntry({ featuredImageUrl: 'https://cdn.example.com/cover.png' })]
+    const { notifyChangelogPublished } = await import('../changelog.service')
+    const { dispatchChangelogPublished } = await import('@/lib/server/events/dispatch')
+
+    await notifyChangelogPublished(ENTRY_ID, ACTOR)
+
+    expect(dispatchChangelogPublished).toHaveBeenCalledWith(
+      ACTOR,
+      expect.objectContaining({ featuredImageUrl: 'https://cdn.example.com/cover.png' }),
       { rethrow: true }
     )
   })

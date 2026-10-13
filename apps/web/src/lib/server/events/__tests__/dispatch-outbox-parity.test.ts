@@ -185,6 +185,7 @@ const cases: Array<{ type: string; run: () => Promise<void> }> = [
         contentHtml: '<p>p</p>',
         publishedAt: new Date('2026-01-01'),
         linkedPostCount: 2,
+        featuredImageUrl: null,
       }),
   },
   { type: 'conversation.created', run: () => d.dispatchConversationCreated(actor(), convData()) },

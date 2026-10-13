@@ -52,7 +52,7 @@ const DISCORD_EVENT_CONFIG: EventConfig[] = [
     id: 'changelog.published',
     label: 'Changelog published',
     shortLabel: 'Changelog',
-    description: 'Post the title and a link when a changelog entry is published',
+    description: 'When a changelog entry is published',
   },
 ]
 

@@ -235,6 +235,9 @@ export interface ChangelogPublishedPayload {
     contentHtml: string
     publishedAt: string
     linkedPostCount: number
+    /** Absolute URL of the entry's featured image, or null when it has none.
+     *  Optional so events queued before the field existed still parse. */
+    featuredImageUrl?: string | null
   }
 }
 
