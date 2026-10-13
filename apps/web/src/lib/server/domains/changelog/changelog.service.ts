@@ -30,7 +30,8 @@ import { NotFoundError, ValidationError } from '@/lib/shared/errors'
 import { markdownToTiptapJson, projectContentJsonToMarkdown } from '@/lib/server/markdown-tiptap'
 import { rehostExternalImages } from '@/lib/server/content/rehost-images'
 import { contentJsonForClient } from '@/lib/server/content/storage-read-urls'
-import { resignStoredAssetUrl } from '@/lib/server/storage/s3'
+import { getEmailSafeUrl, resignStoredAssetUrl } from '@/lib/server/storage/s3'
+import { storedAssetKeyFromSrc } from '@/lib/server/storage/asset-url'
 import { changelogBodyHtml } from './changelog-email-body'
 import {
   buildEventActor,
@@ -459,6 +460,18 @@ function liveUnnotifiedConditions(now: Date) {
 }
 
 /**
+ * The featured image as a URL an outside service (Discord, Slack) can fetch:
+ * absolute and served as bytes, like the logo in emails. Null when the entry
+ * has no image or storage cannot serve it.
+ */
+function announcementImageUrl(src: string | null): string | null {
+  if (!src) return null
+  const key = storedAssetKeyFromSrc(src)
+  if (key) return getEmailSafeUrl(key)
+  return /^https?:\/\//i.test(src) ? src : null
+}
+
+/**
  * Announce a published changelog entry exactly once.
  *
  * Atomically claims the entry by flipping `notifiedAt` from null, and only
@@ -516,6 +529,7 @@ export async function notifyChangelogPublished(
         contentHtml: changelogBodyHtml(claimed.content, claimed.contentJson),
         publishedAt: claimed.publishedAt!,
         linkedPostCount: linkedPosts.length,
+        featuredImageUrl: announcementImageUrl(claimed.featuredImageUrl),
       },
       { rethrow: true }
     )

@@ -5,6 +5,7 @@
 
 import type { EventData } from '@/lib/server/events/types'
 import { stripHtml, truncate, formatStatus, getStatusEmoji } from '@/lib/server/events/hook-utils'
+import { stripMarkdownPreview } from '@/lib/shared/utils/string'
 import { commentPlainText } from '@/lib/server/markdown-tiptap'
 import { getAuthorName, buildPostUrl } from '@/lib/server/integrations/message-utils'
 
@@ -16,12 +17,14 @@ interface DiscordEmbed {
   author?: { name: string }
   fields?: Array<{ name: string; value: string; inline?: boolean }>
   footer?: { text: string }
+  image?: { url: string }
   timestamp?: string
 }
 
 interface DiscordMessage {
   content?: string
   embeds?: DiscordEmbed[]
+  allowed_mentions?: { parse: Array<'users' | 'roles' | 'everyone'> }
 }
 
 /** Discord embed colors */
@@ -43,6 +46,14 @@ function getStatusColor(status: string): number {
     closed: COLORS.grey,
   }
   return map[status.toLowerCase().replace(/\s+/g, '_')] ?? COLORS.blue
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host
+  } catch {
+    return url
+  }
 }
 
 /**
@@ -163,6 +174,33 @@ export function buildDiscordMessage(event: EventData, rootUrl: string): DiscordM
             timestamp: event.timestamp,
           },
         ],
+      }
+    }
+
+    case 'changelog.published': {
+      const { changelog } = event.data
+      const entryUrl = `${rootUrl}/changelog/${changelog.id}`
+      // Headings are dropped: joined into one line they would run straight
+      // into the first sentence ("Dark mode Switch the portal...").
+      const body = stripHtml((changelog.contentPreview || '').replace(/^#{1,6}[ \t].*$/gm, ''))
+      const excerpt = stripMarkdownPreview(body, 200)
+      const readMore = `**[Read the full update →](${entryUrl})**`
+
+      return {
+        embeds: [
+          {
+            author: { name: '📢 New changelog entry' },
+            title: truncate(changelog.title, 256),
+            url: entryUrl,
+            description: excerpt ? `${excerpt}\n\n${readMore}` : readMore,
+            ...(changelog.featuredImageUrl && { image: { url: changelog.featuredImageUrl } }),
+            color: COLORS.green,
+            footer: { text: `${hostOf(rootUrl)} changelog` },
+            timestamp: changelog.publishedAt,
+          },
+        ],
+        // The entry is admin-written text: never let it ping @everyone or roles.
+        allowed_mentions: { parse: [] },
       }
     }
 

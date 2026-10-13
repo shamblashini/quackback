@@ -345,6 +345,7 @@ export interface ChangelogPublishedInput {
   contentHtml: string
   publishedAt: Date
   linkedPostCount: number
+  featuredImageUrl: string | null
 }
 
 export async function dispatchChangelogPublished(
@@ -364,6 +365,7 @@ export async function dispatchChangelogPublished(
           contentHtml: changelog.contentHtml,
           publishedAt: changelog.publishedAt.toISOString(),
           linkedPostCount: changelog.linkedPostCount,
+          featuredImageUrl: changelog.featuredImageUrl,
         },
       },
     },

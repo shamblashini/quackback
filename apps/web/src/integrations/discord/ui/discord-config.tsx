@@ -48,6 +48,12 @@ const DISCORD_EVENT_CONFIG: EventConfig[] = [
     shortLabel: 'Comment',
     description: 'When someone comments on a post',
   },
+  {
+    id: 'changelog.published',
+    label: 'Changelog published',
+    shortLabel: 'Changelog',
+    description: 'When a changelog entry is published',
+  },
 ]
 
 function useDiscordChannels() {

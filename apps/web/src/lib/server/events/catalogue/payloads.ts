@@ -133,6 +133,7 @@ export const P = {
       contentHtml: z.string(),
       publishedAt: z.string(),
       linkedPostCount: z.number(),
+      featuredImageUrl: z.string().nullable().optional(),
     }),
   }),
   // status page
