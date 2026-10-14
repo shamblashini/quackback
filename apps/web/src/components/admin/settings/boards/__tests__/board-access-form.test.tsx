@@ -702,6 +702,52 @@ describe('<BoardAccessForm> reply policy', () => {
   })
 })
 
+describe('<BoardAccessForm> report board preset', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const reportSwitch = () => screen.getByRole('switch', { name: /public report board/i })
+  const TEAM_ONLY: BoardAccess = {
+    view: 'team',
+    vote: 'team',
+    comment: 'team',
+    submit: 'team',
+    segments: { view: [], vote: [], comment: [], submit: [] },
+    moderation: { anonPosts: 'inherit', signedPosts: 'inherit', comments: 'inherit' },
+  }
+
+  it('makes the board public to view even when the workspace blocks anonymous interaction', () => {
+    setWsFlags({ allowAnonymous: false })
+    renderForm(TEAM_ONLY)
+    fireEvent.click(reportSwitch())
+    flushAutosave()
+    expect(mutate).toHaveBeenCalledWith({
+      boardId: BOARD_ID,
+      access: expect.objectContaining({
+        kind: 'reports',
+        view: 'anonymous',
+        vote: 'team',
+        replyPolicy: 'author-only',
+      }),
+    })
+  })
+
+  it('locks the Vote row to Team only on a report board', () => {
+    renderForm({ ...PUBLIC_ACCESS, vote: 'team', kind: 'reports' })
+    expect(isCellSelected('Vote', 'Team only')).toBe(true)
+    const anyone = screen.getByRole('button', { name: 'Vote: Everyone' })
+    expect(anyone).toBeDisabled()
+    expect(anyone).toHaveAttribute('title', 'Report boards never take votes.')
+    clickTierCell('Vote', 'Everyone')
+    flushAutosave()
+    expect(mutate).not.toHaveBeenCalled()
+  })
+})
+
 describe('PRESET_META ↔ accessForPreset agreement (round-trip guard)', () => {
   // The UI preset tiles (PRESET_META, which drives deriveActivePreset) and
   // the server/optimistic source of truth (accessForPreset) must encode the

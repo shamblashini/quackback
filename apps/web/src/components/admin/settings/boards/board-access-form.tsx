@@ -365,6 +365,10 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
       ) {
         return
       }
+      // Report boards never take votes: the Vote row stays on Team only.
+      if (actionId === 'vote' && tierId !== 'team' && resolveBoardKind(values) === 'reports') {
+        return
+      }
       // Workspace ceiling: anonymous is gated by the workspace-wide
       // `allowAnonymous` master switch (view is always allowed,
       // vote/comment/submit move together).
@@ -423,8 +427,9 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
       const opts = { shouldDirty: true } as const
       form.setValue('kind', on ? 'reports' : 'feedback', opts)
       if (!on) return
-      const view: AccessTier = wsAllowAnonymous ? 'anonymous' : 'authenticated'
-      form.setValue('view', view, opts)
+      // Reports are public records. The workspace anonymous ceiling only
+      // covers vote/comment/submit, never view, so view is always open.
+      form.setValue('view', 'anonymous', opts)
       form.setValue('segments.view', [], opts)
       form.setValue('vote', 'team', opts)
       form.setValue('segments.vote', [], opts)
@@ -437,7 +442,7 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
       })
       form.setValue('replyPolicy', 'author-only', opts)
     },
-    [form, wsAllowAnonymous]
+    [form]
   )
 
   // `replyPolicy` is an optional key on BoardAccess (absent == 'anyone'), so
@@ -800,16 +805,22 @@ function MatrixRow({
           tier.id === 'anonymous' &&
           (action.id === 'submit' || action.id === 'comment') &&
           resolveBoardKind(values) === 'reports'
-        const disabled = hierarchyBlocked || wsBlocked || reportBlocked
+        // Report boards never take votes, so the Vote row stays on Team only
+        // (the lowest setting). The server refuses every vote there regardless.
+        const reportVoteLocked =
+          action.id === 'vote' && tier.id !== 'team' && resolveBoardKind(values) === 'reports'
+        const disabled = hierarchyBlocked || wsBlocked || reportBlocked || reportVoteLocked
         const isSegmentsCell = tier.id === 'segments'
 
         const tooltip = wsBlocked
           ? 'Anonymous interaction is disabled workspace-wide. Manage in Access & Security → Portal access.'
-          : reportBlocked
-            ? 'Report boards require an account to file and reply to reports.'
-            : hierarchyBlocked
-              ? `Can't be more open than View (${TIERS.find((x) => ACCESS_TIER_RANK[x.id] === minRank)?.label}).`
-              : undefined
+          : reportVoteLocked
+            ? 'Report boards never take votes.'
+            : reportBlocked
+              ? 'Report boards require an account to file and reply to reports.'
+              : hierarchyBlocked
+                ? `Can't be more open than View (${TIERS.find((x) => ACCESS_TIER_RANK[x.id] === minRank)?.label}).`
+                : undefined
 
         const disabledStyle: CSSProperties = disabled
           ? {
@@ -840,7 +851,7 @@ function MatrixRow({
             data-disabled-reason={
               wsBlocked
                 ? 'workspace'
-                : reportBlocked
+                : reportBlocked || reportVoteLocked
                   ? 'reports'
                   : hierarchyBlocked
                     ? 'hierarchy'
