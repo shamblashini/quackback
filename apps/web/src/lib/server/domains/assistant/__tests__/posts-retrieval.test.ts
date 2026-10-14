@@ -11,6 +11,9 @@ const mockLimit = vi.fn()
 vi.mock('@/lib/server/test-data', () => ({
   notTestPrincipal: vi.fn((column: unknown) => ({ op: 'notTestPrincipal', column })),
 }))
+vi.mock('@/lib/server/policy/boards', () => ({
+  boardKindCondition: vi.fn((kind: string) => ({ op: 'boardKind', kind })),
+}))
 vi.mock('@/lib/server/db', () => ({
   db: {
     select: vi.fn(() => ({
@@ -63,6 +66,7 @@ vi.mock('@/lib/server/db', () => ({
 
 import { eq, isNull, sql } from '@/lib/server/db'
 import { notTestPrincipal } from '@/lib/server/test-data'
+import { boardKindCondition } from '@/lib/server/policy/boards'
 import {
   retrievePosts,
   postsVisibilityConditions,
@@ -98,12 +102,20 @@ describe('postsVisibilityConditions', () => {
     expect(vi.mocked(isNull)).toHaveBeenCalledWith('board_deleted_at')
     // ...and a test customer's ideas, which no ceiling may cite.
     expect(vi.mocked(notTestPrincipal)).toHaveBeenCalledWith('principal_id')
-    expect(conditions).toHaveLength(5)
+    expect(conditions).toHaveLength(6)
+  })
+
+  it('excludes report boards for every ceiling', () => {
+    for (const ceiling of ['public', 'team', 'internal'] as const) {
+      vi.mocked(boardKindCondition).mockClear()
+      postsVisibilityConditions(ceiling)
+      expect(vi.mocked(boardKindCondition)).toHaveBeenCalledWith('feedback')
+    }
   })
 
   it('adds the public-board predicate only for the public ceiling', () => {
     const publicConditions = postsVisibilityConditions('public')
-    expect(publicConditions).toHaveLength(6)
+    expect(publicConditions).toHaveLength(7)
     const boardCheck = vi
       .mocked(sql)
       .mock.calls.find(

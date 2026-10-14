@@ -17,6 +17,7 @@ import { generateEmbedding } from '@/lib/server/domains/embeddings/embedding.ser
 import { orTermsTsQuery } from '@/lib/server/domains/help-center/help-center-search.service'
 import type { ContentAudience } from './audience'
 import { notTestPrincipal } from '@/lib/server/test-data'
+import { boardKindCondition } from '@/lib/server/policy/boards'
 import {
   KNOWLEDGE_SNIPPET_CHARS,
   type KnowledgeSource,
@@ -80,7 +81,7 @@ function postUrl(boardSlug: string, postId: string): string {
  * Always excludes soft-deleted posts, merged posts (a duplicate points at its
  * canonical post via `canonicalPostId`; only the canonical post should ever
  * be cited), non-published moderation states, and posts whose board is
- * itself soft-deleted.
+ * itself soft-deleted, and posts on report boards (`access.kind = 'reports'`).
  *
  * Board visibility beyond that is scoped by the ceiling: a `public` ceiling
  * (the customer-facing surfaces) only sees posts on a publicly-viewable board
@@ -99,6 +100,10 @@ export function postsVisibilityConditions(ceiling: ContentAudience) {
     isNull(boards.deletedAt),
     // A teammate's test idea is never cited to anyone.
     notTestPrincipal(posts.principalId),
+    // Report boards are not feedback: their text is never retrieved, for any
+    // ceiling. The team copilot is excluded too (the safer default) since a
+    // report can hold sensitive detail meant for triage, not for quoting.
+    boardKindCondition('feedback'),
   ]
   if (ceiling === 'public') {
     return [...base, sql`${boards.access}->>'view' = 'anonymous'`]
