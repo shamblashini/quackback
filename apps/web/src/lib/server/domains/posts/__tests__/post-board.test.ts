@@ -66,6 +66,32 @@ describe('changeBoard', () => {
     )
   })
 
+  it.each([
+    ['feedback to report', undefined, { kind: 'reports' }],
+    ['report to feedback', { kind: 'reports' }, undefined],
+  ])('refuses to move a post from %s', async (_label, fromAccess, toAccess) => {
+    mockPostsFindFirst.mockResolvedValue({ id: 'post_123', boardId: 'board_old' })
+    mockBoardsFindFirst
+      .mockResolvedValueOnce({ id: 'board_old', name: 'Old', slug: 'old', access: fromAccess })
+      .mockResolvedValueOnce({ id: 'board_new', name: 'New', slug: 'new', access: toAccess })
+    const { changeBoard } = await import('../post.board')
+    await expect(changeBoard('post_123' as PostId, 'board_new' as BoardId, actor)).rejects.toThrow(
+      /report board and a feedback board/
+    )
+    expect(dbUpdate).not.toHaveBeenCalled()
+  })
+
+  it('allows moving a post between two report boards', async () => {
+    mockPostsFindFirst.mockResolvedValue({ id: 'post_123', boardId: 'board_old' })
+    mockBoardsFindFirst
+      .mockResolvedValueOnce({ id: 'board_old', name: 'Old', access: { kind: 'reports' } })
+      .mockResolvedValueOnce({ id: 'board_new', name: 'New', access: { kind: 'reports' } })
+    updateReturning.mockResolvedValue([{ id: 'post_123', boardId: 'board_new' }])
+    const { changeBoard } = await import('../post.board')
+    await changeBoard('post_123' as PostId, 'board_new' as BoardId, actor)
+    expect(dbUpdate).toHaveBeenCalled()
+  })
+
   it('throws BOARD_NOT_FOUND when new board does not exist', async () => {
     mockPostsFindFirst.mockResolvedValue({ id: 'post_123', boardId: 'board_old' })
     // Promise.all order: [currentBoard, newBoard]

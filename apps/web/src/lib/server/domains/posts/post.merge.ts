@@ -45,6 +45,7 @@ import type {
 } from './post.types'
 import type { CommentTreeNode } from '@/lib/shared'
 import { logger } from '@/lib/server/logger'
+import { resolveBoardKind } from '@/lib/shared/db-types'
 import { isTestPrincipalSql, notTestPrincipal } from '@/lib/server/test-data'
 
 const log = logger.child({ component: 'post-merge' })
@@ -112,6 +113,30 @@ export async function mergePost(
     throw new ValidationError(
       'INVALID_MERGE_TARGET',
       'Cannot merge into a post that is itself merged. Choose the canonical post instead.'
+    )
+  }
+
+  // Report and feedback posts live in separate experiences; merging across
+  // them would pull report text into the feedback UX (or the reverse).
+  // Report <-> report and feedback <-> feedback are fine.
+  const [dupBoard, canBoard] = await Promise.all([
+    db.query.boards.findFirst({
+      where: eq(boards.id, duplicatePost.boardId),
+      columns: { slug: true, access: true },
+    }),
+    db.query.boards.findFirst({
+      where: eq(boards.id, canonicalPost.boardId),
+      columns: { slug: true, access: true },
+    }),
+  ])
+  if (
+    dupBoard &&
+    canBoard &&
+    resolveBoardKind(dupBoard.access) !== resolveBoardKind(canBoard.access)
+  ) {
+    throw new ValidationError(
+      'INVALID_MERGE',
+      'Reports and feedback posts cannot be merged into each other.'
     )
   }
 
@@ -214,16 +239,6 @@ export async function mergePost(
   })
 
   // Dispatch post.merged event for webhooks and integrations
-  const [dupBoard, canBoard] = await Promise.all([
-    db.query.boards.findFirst({
-      where: eq(boards.id, duplicatePost.boardId),
-      columns: { slug: true },
-    }),
-    db.query.boards.findFirst({
-      where: eq(boards.id, canonicalPost.boardId),
-      columns: { slug: true },
-    }),
-  ])
   if (dupBoard && canBoard) {
     dispatchPostMerged(
       buildEventActor({ principalId: actorPrincipalId, userId: actorUserId }),

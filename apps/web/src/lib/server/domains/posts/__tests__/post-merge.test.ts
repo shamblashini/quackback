@@ -198,6 +198,36 @@ describe('mergePost', () => {
     )
   })
 
+  it('refuses to merge a report into a feedback post, and the reverse', async () => {
+    for (const [dupAccess, canAccess] of [
+      [{ kind: 'reports' }, undefined],
+      [undefined, { kind: 'reports' }],
+    ]) {
+      mockPostsFindFirst
+        .mockResolvedValueOnce(mockPost({ id: POST_A, boardId: 'board_dup' }))
+        .mockResolvedValueOnce(mockPost({ id: POST_B, boardId: 'board_can' }))
+      mockBoardsFindFirst
+        .mockResolvedValueOnce({ slug: 'dup', access: dupAccess })
+        .mockResolvedValueOnce({ slug: 'can', access: canAccess })
+
+      await expect(mergePost(POST_A, POST_B, ACTOR)).rejects.toThrow(
+        /Reports and feedback posts cannot be merged/
+      )
+    }
+    expect(mockDbUpdate).not.toHaveBeenCalled()
+  })
+
+  it('allows merging two report posts', async () => {
+    mockPostsFindFirst
+      .mockResolvedValueOnce(mockPost({ id: POST_A }))
+      .mockResolvedValueOnce(mockPost({ id: POST_B }))
+    mockBoardsFindFirst
+      .mockResolvedValueOnce({ slug: 'r1', access: { kind: 'reports' } })
+      .mockResolvedValueOnce({ slug: 'r2', access: { kind: 'reports' } })
+
+    await expect(mergePost(POST_A, POST_B, ACTOR)).resolves.toBeDefined()
+  })
+
   it('records activity on both posts after successful merge', async () => {
     mockPostsFindFirst
       .mockResolvedValueOnce(mockPost({ id: POST_A, title: 'Duplicate' }))

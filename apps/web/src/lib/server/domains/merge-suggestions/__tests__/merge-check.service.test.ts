@@ -125,6 +125,21 @@ describe('merge-check.service', () => {
       expect(mockFindMergeCandidates).not.toHaveBeenCalled()
     })
 
+    it('should skip a post on a report board', async () => {
+      mockPostFindFirst.mockResolvedValueOnce({
+        id: postId,
+        deletedAt: null,
+        canonicalPostId: null,
+        embedding: [0.1, 0.2],
+        board: { access: { kind: 'reports' } },
+      })
+
+      const { checkPostForMergeCandidates } = await import('../merge-check.service')
+      await checkPostForMergeCandidates(postId)
+
+      expect(mockFindMergeCandidates).not.toHaveBeenCalled()
+    })
+
     it('should bail if post is already merged', async () => {
       mockPostFindFirst.mockResolvedValueOnce({
         id: postId,

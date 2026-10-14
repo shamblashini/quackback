@@ -4,7 +4,7 @@
  * Pair every canViewBoard() with a matching boardViewFilter() so list
  * queries and single-row reads use the same predicate.
  */
-import { sql, isNull, type SQL } from 'drizzle-orm'
+import { sql, isNull, type SQL, type AnyColumn } from 'drizzle-orm'
 import { boards, type BoardAccess, type AccessTier, type BoardKind } from '@/lib/server/db'
 import { allowDecision, denyDecision, isTeamActor, type Actor, type Decision } from './types'
 import { tierAllows } from './access'
@@ -100,4 +100,12 @@ export function boardViewFilter(actor: Actor): SQL {
 export function boardKindCondition(kind: BoardKind): SQL {
   const stored = sql`coalesce(${boards.access}->>'kind', 'feedback')`
   return kind === 'reports' ? sql`${stored} = 'reports'` : sql`${stored} <> 'reports'`
+}
+
+/**
+ * Like {@link boardKindCondition}, for queries on `posts` that do not join
+ * `boards`: matches a post whose board (by id column) is of the given kind.
+ */
+export function boardIdKindCondition(boardIdColumn: SQL | AnyColumn, kind: BoardKind): SQL {
+  return sql`${boardIdColumn} IN (SELECT ${boards.id} FROM ${boards} WHERE ${boardKindCondition(kind)})`
 }

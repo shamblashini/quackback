@@ -6,8 +6,9 @@
 
 import { db, posts, boards, eq, and, isNull } from '@/lib/server/db'
 import { type PostId, type BoardId, type UserId, type PrincipalId } from '@quackback/ids'
-import { NotFoundError } from '@/lib/shared/errors'
+import { NotFoundError, ValidationError } from '@/lib/shared/errors'
 import { createActivity } from '@/lib/server/domains/activity/activity.service'
+import { resolveBoardKind } from '@/lib/shared/db-types'
 import type { ChangeBoardResult } from './post.types'
 
 /**
@@ -46,6 +47,15 @@ export async function changeBoard(
   }
   if (!newBoard) {
     throw new NotFoundError('BOARD_NOT_FOUND', `Board with ID ${newBoardId} not found`)
+  }
+
+  // A report belongs on the reports page, feedback on the portal feed. Moving
+  // across would leak one into the other's surfaces.
+  if (resolveBoardKind(currentBoard.access) !== resolveBoardKind(newBoard.access)) {
+    throw new ValidationError(
+      'INVALID_BOARD_MOVE',
+      'Posts cannot be moved between a report board and a feedback board.'
+    )
   }
 
   const [updatedPost] = await db

@@ -15,6 +15,8 @@ import { withWorkspaceSweepReentrancyGuard } from '@/lib/server/sweep-lock'
 import { aiBudgetAvailable } from '@/lib/server/domains/settings/tier-enforce'
 import { TierLimitError } from '@/lib/server/errors/tier-limit-error'
 import { isTestCustomer, notTestPrincipal } from '@/lib/server/test-data'
+import { boardIdKindCondition } from '@/lib/server/policy/boards'
+import { resolveBoardKind } from '@/lib/shared/db-types'
 import type { PostId } from '@quackback/ids'
 
 const log = logger.child({ component: 'merge-check' })
@@ -43,12 +45,16 @@ export async function checkPostForMergeCandidates(postId: PostId): Promise<void>
       embedding: true,
       principalId: true,
     },
+    with: { board: { columns: { access: true } } },
   })
 
   // Bail if deleted, merged, or no embedding
   if (!post || post.deletedAt || post.canonicalPostId || !post.embedding) {
     return
   }
+  // Reports are never merge sources or candidates: merging across kinds is
+  // refused, and report-to-report dedupe is a manual call.
+  if (resolveBoardKind(post.board?.access) === 'reports') return
   // A test customer's idea is never assessed against real feedback.
   if (await isTestCustomer(post.principalId)) return
 
@@ -162,6 +168,7 @@ async function _doSweep(): Promise<void> {
           isNotNull(posts.embedding),
           isNull(posts.mergeCheckedAt),
           notTestPrincipal(posts.principalId),
+          boardIdKindCondition(posts.boardId, 'feedback'),
           attempted.size > 0 ? notInArray(posts.id, [...attempted]) : undefined
         )
       )

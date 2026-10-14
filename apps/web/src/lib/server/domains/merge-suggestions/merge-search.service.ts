@@ -8,6 +8,7 @@
 import { db, posts, and, isNull, isNotNull, ne, desc, asc, sql } from '@/lib/server/db'
 import { logger } from '@/lib/server/logger'
 import { notTestPrincipal } from '@/lib/server/test-data'
+import { boardIdKindCondition } from '@/lib/server/policy/boards'
 import type { PostId } from '@quackback/ids'
 
 const log = logger.child({ component: 'merge-search' })
@@ -78,6 +79,8 @@ export async function findMergeCandidates(
         isNotNull(posts.embedding),
         ne(posts.id, postId),
         notTestPrincipal(posts.principalId),
+        // Never pair feedback with a report (reports are skipped as sources too).
+        boardIdKindCondition(posts.boardId, 'feedback'),
         sql`${posts.searchVector} @@ plainto_tsquery('english', ${title})`
       )
     )
@@ -102,6 +105,8 @@ export async function findMergeCandidates(
         isNotNull(posts.embedding),
         ne(posts.id, postId),
         notTestPrincipal(posts.principalId),
+        // Never pair feedback with a report (reports are skipped as sources too).
+        boardIdKindCondition(posts.boardId, 'feedback'),
         sql`1 - (${posts.embedding} <=> ${vectorStr}::vector) >= ${VECTOR_THRESHOLD}`
       )
     )

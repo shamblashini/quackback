@@ -18,6 +18,7 @@ import { postOwnerQueries } from '@/lib/client/queries/post-owner'
 import { mergeSuggestionQueries } from '@/lib/client/queries/signals'
 import { usePermission } from '@/lib/client/hooks/use-permission'
 import { PERMISSIONS } from '@/lib/shared/permissions'
+import { resolveBoardKind } from '@/lib/shared/db-types'
 import { inboxKeys } from '@/lib/client/hooks/use-inbox-query'
 import {
   MetadataSidebar,
@@ -99,6 +100,12 @@ export const PostModalContent = memo(function PostModalContent({
   const { data: tags = [] } = useQuery(adminQueries.tags())
   const { data: statuses = [] } = useQuery(adminQueries.statuses())
   const { data: boards = [] } = useQuery(adminQueries.boards())
+  // A post can only move between boards of the same kind: reports stay among
+  // report boards, feedback among feedback boards (the server enforces it too).
+  const currentBoardKind = resolveBoardKind(
+    boards.find((b) => b.id === postQuery.data.board.id)?.access
+  )
+  const movableBoards = boards.filter((b) => resolveBoardKind(b.access) === currentBoardKind)
 
   // Owner (assignee) control — gated on post.set_owner. The roster is fetched
   // via the same post.set_owner-gated fn the portal uses; the current owner is
@@ -572,7 +579,7 @@ export const PostModalContent = memo(function PostModalContent({
               showVoters
               allStatuses={statuses}
               allTags={tags}
-              allBoards={boards}
+              allBoards={movableBoards}
               onStatusChange={handleStatusChange}
               onEtaChange={handleEtaChange}
               onTagsChange={handleTagsChange}

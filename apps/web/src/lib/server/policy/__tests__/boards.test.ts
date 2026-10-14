@@ -9,7 +9,9 @@
  * determinism and the team-bypass invariant.
  */
 import { describe, it, expect } from 'vitest'
-import { canViewBoard } from '../boards'
+import { PgDialect } from 'drizzle-orm/pg-core'
+import { posts } from '@/lib/server/db'
+import { canViewBoard, boardKindCondition, boardIdKindCondition } from '../boards'
 import { ANONYMOUS_ACTOR, type Actor } from '../types'
 import type { SegmentId, PrincipalId } from '@quackback/ids'
 import type { BoardAccess } from '@/lib/server/db'
@@ -366,5 +368,24 @@ describe('canViewBoard — idempotence + freshness', () => {
       label: 'noise',
     }
     expect(canViewBoard(portalUserInAlpha, board)).toEqual({ allowed: true })
+  })
+})
+
+describe('board kind predicates', () => {
+  const dialect = new PgDialect()
+
+  it('boardKindCondition coalesces a missing kind to feedback', () => {
+    const feedback = dialect.sqlToQuery(boardKindCondition('feedback')).sql
+    const reports = dialect.sqlToQuery(boardKindCondition('reports')).sql
+    expect(feedback).toContain('coalesce("boards"."access"->>\'kind\', \'feedback\')')
+    expect(feedback).toContain("<> 'reports'")
+    expect(reports).toContain("= 'reports'")
+    expect(reports).not.toContain('<>')
+  })
+
+  it('boardIdKindCondition filters a post board id through a boards subquery', () => {
+    const { sql: rendered } = dialect.sqlToQuery(boardIdKindCondition(posts.boardId, 'feedback'))
+    expect(rendered).toContain('"posts"."board_id" IN (SELECT "boards"."id" FROM "boards" WHERE')
+    expect(rendered).toContain("<> 'reports'")
   })
 })
