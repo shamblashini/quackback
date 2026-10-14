@@ -34,6 +34,7 @@ import { recordAuditEvent } from '@/lib/server/audit/log'
 import { logger } from '@/lib/server/logger'
 import { recalculateCanonicalVoteCount } from './post.merge-ids'
 import { authorPostRules, REPORT_DELETE_DENIED } from './post.permissions'
+import { isReportBoard } from '@/lib/shared/db-types'
 
 const log = logger.child({ component: 'post-user-actions' })
 
@@ -163,7 +164,8 @@ export async function userEditPost(
           'Cannot edit posts that have been reviewed by the team'
         )
       }
-      if (existingPost.voteCount > 0) {
+      // Report boards take no votes; a leftover author upvote is not engagement.
+      if (existingPost.voteCount > 0 && !isReportBoard(existingPost.board)) {
         throw new ForbiddenError('EDIT_NOT_ALLOWED', 'Cannot edit posts that have received votes')
       }
       // Check for comments from others

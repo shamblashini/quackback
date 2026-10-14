@@ -9,7 +9,8 @@
 import { db, eq, and, sql, posts, boards, postStatuses, postExternalLinks } from '@/lib/server/db'
 import { createId, fromUuid, type PostId, type PrincipalId } from '@quackback/ids'
 import { getExecuteRows } from '@/lib/server/utils'
-import { addVoteOnBehalf } from '@/lib/server/domains/posts/post.voting'
+import { ForbiddenError } from '@/lib/shared/errors'
+import { addVoteOnBehalf, assertBoardTakesVotes } from '@/lib/server/domains/posts/post.voting'
 import { identifyPortalUser } from '@/lib/server/domains/users/user.identify'
 
 export interface LinkTicketInput {
@@ -36,6 +37,14 @@ export interface LinkedPost {
   board: { name: string }
   linkId: string
   linkedAt: Date
+}
+
+async function currentVoteCount(postId: PostId): Promise<number> {
+  const post = await db.query.posts.findFirst({
+    where: eq(posts.id, postId),
+    columns: { voteCount: true },
+  })
+  return post?.voteCount ?? 0
 }
 
 /**
@@ -70,6 +79,7 @@ export async function linkTicketToPost(
   // Resolve requester principal and vote on their behalf
   let voterPrincipalId: PrincipalId | null = null
   let voted = false
+  let canVote = true
   let voteCount: number
 
   if (input.requester?.email) {
@@ -79,19 +89,26 @@ export async function linkTicketToPost(
     })
     voterPrincipalId = identified.principalId
 
-    const voteResult = await addVoteOnBehalf(input.postId, identified.principalId, {
-      type: input.integrationType,
-      externalUrl: input.externalUrl ?? `${input.integrationType}:${input.externalId}`,
-    })
-    voted = voteResult.voted
-    voteCount = voteResult.voteCount
+    // A report board takes no votes: the ticket still links, the vote is skipped.
+    try {
+      await assertBoardTakesVotes(input.postId)
+    } catch (error) {
+      if (!(error instanceof ForbiddenError)) throw error
+      canVote = false
+    }
+    if (canVote) {
+      const voteResult = await addVoteOnBehalf(input.postId, identified.principalId, {
+        type: input.integrationType,
+        externalUrl: input.externalUrl ?? `${input.integrationType}:${input.externalId}`,
+      })
+      voted = voteResult.voted
+      voteCount = voteResult.voteCount
+    } else {
+      voteCount = await currentVoteCount(input.postId)
+    }
   } else {
     // No requester - just get current vote count
-    const post = await db.query.posts.findFirst({
-      where: eq(posts.id, input.postId),
-      columns: { voteCount: true },
-    })
-    voteCount = post?.voteCount ?? 0
+    voteCount = await currentVoteCount(input.postId)
   }
 
   return {

@@ -16,10 +16,13 @@ import {
   eq,
   and,
 } from '@/lib/server/db'
+import { alias } from 'drizzle-orm/pg-core'
 import { createId, fromUuid, toUuid, type PostId, type PrincipalId } from '@quackback/ids'
 import { relatedPostIdsSql } from './post.merge-ids'
 import { getExecuteRows } from '@/lib/server/utils'
-import { NotFoundError } from '@/lib/shared/errors'
+import { ForbiddenError, NotFoundError } from '@/lib/shared/errors'
+import { isReportBoard } from '@/lib/shared/db-types'
+import { REPORT_VOTES_DENIED } from '@/lib/server/policy/posts'
 import { realEmail } from '@/lib/shared/anonymous-email'
 import { logger } from '@/lib/server/logger'
 import { notTestPrincipal } from '@/lib/server/test-data'
@@ -93,6 +96,27 @@ async function emitPostVotedEvent(
 }
 
 /**
+ * Refuse a vote on a report board, whoever casts it. A report carries no
+ * public-opinion signal, so this domain-level guard backs the per-actor policy
+ * (`canVotePost`) for the paths that skip it: team proxy votes, integrations
+ * and conversation conversion. Votes land on the canonical post of a merge, so
+ * the check follows it. An unknown post is left for the vote query to report.
+ */
+export async function assertBoardTakesVotes(postId: PostId): Promise<void> {
+  const target = alias(posts, 'vote_target')
+  const [row] = await db
+    .select({ access: boards.access })
+    .from(posts)
+    .innerJoin(target, eq(target.id, sql`COALESCE(${posts.canonicalPostId}, ${posts.id})`))
+    .innerJoin(boards, eq(boards.id, target.boardId))
+    .where(eq(posts.id, postId))
+    .limit(1)
+  if (row && isReportBoard({ access: row.access })) {
+    throw new ForbiddenError('VOTE_NOT_ALLOWED', REPORT_VOTES_DENIED)
+  }
+}
+
+/**
  * Toggle vote on a post
  *
  * If the user has already voted, removes the vote.
@@ -106,6 +130,7 @@ async function emitPostVotedEvent(
  * @returns Result containing vote status and new count, or an error
  */
 export async function voteOnPost(postId: PostId, principalId: PrincipalId): Promise<VoteResult> {
+  await assertBoardTakesVotes(postId)
   const postUuid = toUuid(postId)
   const principalUuid = toUuid(principalId)
   const voteId = toUuid(createId('post_vote'))
@@ -239,6 +264,7 @@ export async function addVoteOnBehalf(
   addedByPrincipalId?: PrincipalId,
   createdAt?: Date
 ): Promise<VoteResult> {
+  await assertBoardTakesVotes(postId)
   const postUuid = toUuid(postId)
   const principalUuid = toUuid(principalId)
   const voteId = toUuid(createId('post_vote'))

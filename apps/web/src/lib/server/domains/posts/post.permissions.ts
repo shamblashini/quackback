@@ -99,7 +99,9 @@ export async function canEditPost(
 
   // Check for engagement (votes, comments from others)
   if (!rules.allowEditAfterEngagement) {
-    if (post.voteCount > 0) {
+    // Report boards take no votes; a leftover author upvote from before that
+    // rule must not count as engagement.
+    if (post.voteCount > 0 && !isReportBoard(post.board)) {
       return { allowed: false, reason: 'Cannot edit posts that have received votes' }
     }
 

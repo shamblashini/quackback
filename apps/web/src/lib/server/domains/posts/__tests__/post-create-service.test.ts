@@ -207,6 +207,34 @@ describe('createPost author attribution', () => {
     expect(voteRow.principalId).toBe(overridePrincipal)
     expect(subscribeToPost).toHaveBeenCalledWith(overridePrincipal, 'post_new', 'author')
   })
+
+  it('skips the author auto-upvote on a report board', async () => {
+    txLockedBoardRows.value = [
+      { deletedAt: null, access: { ...LOCKED_ANON_ACCESS, kind: 'reports' } },
+    ]
+    const { createPost } = await import('../post.service')
+
+    await createPost(
+      {
+        boardId: 'board_b' as unknown as BoardId,
+        title: 'A report',
+        content: 'Body',
+        statusId: 'post_status_open' as unknown as PostStatusId,
+      },
+      {
+        principalId: 'principal_reporter' as unknown as PrincipalId,
+        actor: {
+          principalId: 'principal_reporter' as unknown as PrincipalId,
+          role: null,
+          principalType: 'user',
+          segmentIds: new Set(),
+        },
+      }
+    )
+
+    expect(insertedRows.posts[0]).toMatchObject({ voteCount: 0 })
+    expect(insertedRows.post_votes).toHaveLength(0)
+  })
 })
 
 describe('createPost held audit event', () => {

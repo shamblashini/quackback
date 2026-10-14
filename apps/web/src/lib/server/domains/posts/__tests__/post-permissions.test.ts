@@ -331,3 +331,45 @@ describe('authorPostRules', () => {
     })
   })
 })
+
+describe('canEditPost — reporter on a report board', () => {
+  // Report boards take no votes, so the reporter keeps the edit right until
+  // the team engages (a reply or a status change).
+  const portalConfig = {
+    features: { allowEditAfterEngagement: true, allowDeleteAfterEngagement: true },
+  } as never
+  const report = (voteCount: number) => ({
+    id: POST_ID,
+    principalId: USER_ACTOR.principalId,
+    statusId: 'post_status_mock',
+    voteCount,
+    deletedAt: null,
+    board: { access: { kind: 'reports' } },
+  })
+
+  beforeEach(() => {
+    mockFindFirst.mockReset()
+  })
+
+  it('lets the reporter edit before the team engages', async () => {
+    mockFindFirst.mockResolvedValue(report(0))
+    const { canEditPost } = await import('../post.permissions')
+    expect((await canEditPost(POST_ID, USER_ACTOR, portalConfig)).allowed).toBe(true)
+  })
+
+  it('does not count a leftover author upvote as engagement', async () => {
+    mockFindFirst.mockResolvedValue(report(1))
+    const { canEditPost } = await import('../post.permissions')
+    expect((await canEditPost(POST_ID, USER_ACTOR, portalConfig)).allowed).toBe(true)
+  })
+
+  it('blocks the edit once the team has replied', async () => {
+    mockFindFirst.mockResolvedValue(report(0))
+    const { db } = await import('@/lib/server/db')
+    vi.mocked(db.query.postComments.findFirst).mockResolvedValueOnce({
+      id: 'comment_team',
+    } as never)
+    const { canEditPost } = await import('../post.permissions')
+    expect((await canEditPost(POST_ID, USER_ACTOR, portalConfig)).allowed).toBe(false)
+  })
+})

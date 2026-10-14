@@ -77,6 +77,7 @@ function accessOf(board: BoardShape): BoardAccess {
 
 const isTeam = isTeamActor
 
+export const REPORT_VOTES_DENIED = 'Report boards do not take votes'
 export const REPORT_ACCOUNT_REQUIRED = 'Sign in to an account to file or reply to a report'
 
 /**
@@ -178,7 +179,8 @@ function tierDenyMessage(action: 'comment' | 'vote' | 'submit', tier: AccessTier
  *
  * Rules (applied in order):
  * 1. The actor must be able to view the post (board view tier + moderation state).
- * 2. The actor must satisfy the board's comment tier — independent of view
+ * 2. A report board never takes votes, from anyone.
+ * 3. The actor must satisfy the board's comment tier — independent of view
  *    (a board can be public-to-view but team-only-to-comment).
  * 3. On an `author-only` board, only the post's own author and team members
  *    may reply — everyone else reads the thread without being able to answer.
@@ -243,7 +245,8 @@ export type VoteDecision = { allowed: true } | { allowed: false; reason: string 
  *
  * Rules (applied in order):
  * 1. The actor must be able to view the post (board view tier + moderation state).
- * 2. The actor must satisfy the board's vote tier — independent of view
+ * 2. A report board never takes votes, from anyone.
+ * 3. The actor must satisfy the board's vote tier — independent of view
  *    (a board can be public-to-view but authenticated-only-to-vote, the
  *    modern-SaaS "Public" preset).
  *
@@ -255,6 +258,11 @@ export function canVotePost(actor: Actor, post: PostShape, board: BoardShape): V
   if (!view.allowed) return { allowed: false, reason: view.reason }
 
   const access = accessOf(board)
+  // Reports carry no public-opinion signal, so nobody votes on them, team
+  // included: popularity must not steer moderation.
+  if (resolveBoardKind(access) === 'reports') {
+    return { allowed: false, reason: REPORT_VOTES_DENIED }
+  }
   if (!tierAllows(actor, access.vote, access.segments.vote)) {
     return { allowed: false, reason: tierDenyMessage('vote', access.vote) }
   }

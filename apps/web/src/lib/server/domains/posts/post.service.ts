@@ -56,7 +56,7 @@ import { startOfUtcMonth } from '@/lib/shared/utils/date'
 import { extractMentions, extractMentionExcerpts } from './extract-mentions'
 import { syncPostMentions } from './sync-post-mentions'
 import { validatePostCustomFieldValues } from '@/lib/shared/post-custom-fields'
-import type { CustomFieldValues } from '@/lib/shared/db-types'
+import { isReportBoard, type CustomFieldValues } from '@/lib/shared/db-types'
 import { buildPostUrl } from '@/lib/server/integrations/message-utils'
 import { getBaseUrl } from '@/lib/server/config'
 import { logger } from '@/lib/server/logger'
@@ -185,6 +185,7 @@ export async function createPost(
     ? 'pending'
     : 'published'
   let holdReason: ReturnType<typeof contentHoldReason> = null
+  let isReport = false
 
   // Determine statusId - either from input or use default "open" status
   let statusId = input.statusId
@@ -239,6 +240,8 @@ export async function createPost(
     if (!lockedDecision.allowed) {
       throw new ValidationError('POST_CREATE_DENIED', lockedDecision.reason)
     }
+    // A report board takes no votes, so the author's own upvote is skipped too.
+    isReport = isReportBoard({ access: lockedBoard.access })
     moderationState = lockedDecision.requiresApproval ? 'pending' : 'published'
     const actor = lockedActor
     holdReason = isTeamActor(actor)
@@ -260,7 +263,7 @@ export async function createPost(
         widgetMetadata: input.widgetMetadata ?? null,
         customFieldValues,
         trackedByPrincipalId: input.trackedByPrincipalId ?? null,
-        voteCount: 1,
+        voteCount: isReport ? 0 : 1,
         moderationState,
         ...(input.createdAt && { createdAt: input.createdAt }),
       })
@@ -274,11 +277,13 @@ export async function createPost(
     }
 
     // Auto-upvote by the author
-    await tx.insert(postVotes).values({
-      id: createId('post_vote'),
-      postId: newPost.id,
-      principalId: author.principalId,
-    })
+    if (!isReport) {
+      await tx.insert(postVotes).values({
+        id: createId('post_vote'),
+        postId: newPost.id,
+        principalId: author.principalId,
+      })
+    }
 
     return newPost
   })

@@ -112,11 +112,12 @@ describe('boardCapabilitiesForActor', () => {
     })
   })
 
-  it('ignores the report-board kind too — it only forces the per-post reply rule', () => {
+  it('leaves submit and comment alone on a report board; only voting is removed', () => {
     const reports = makeAccess({ kind: 'reports' })
-    expect(boardCapabilitiesForActor(USER, reports, true)).toEqual(
-      boardCapabilitiesForActor(USER, makeAccess(), true)
-    )
+    expect(boardCapabilitiesForActor(USER, reports, true)).toEqual({
+      ...boardCapabilitiesForActor(USER, makeAccess(), true),
+      canVote: false,
+    })
   })
 
   it('gates submit, vote and comment independently per tier', () => {
@@ -156,6 +157,15 @@ describe('boardCapabilitiesForActor — report boards', () => {
       canSubmit: true,
       canComment: true,
     })
+  })
+})
+
+describe('boardCapabilitiesForActor — report boards take no votes', () => {
+  it('never advertises voting, to a member or to the team', () => {
+    const reports = makeAccess({ kind: 'reports', vote: 'anonymous' })
+    expect(boardCapabilitiesForActor(USER, reports, true).canVote).toBe(false)
+    expect(boardCapabilitiesForActor(TEAM, reports, true).canVote).toBe(false)
+    expect(boardCapabilitiesForActor(TEAM, makeAccess(), true).canVote).toBe(true)
   })
 })
 

@@ -1474,6 +1474,28 @@ describe('canCreateComment — report boards force the author-only policy', () =
   })
 })
 
+describe('canVotePost — report boards take no votes', () => {
+  const published = { moderationState: 'published' as ModerationState, principalId: null }
+  const reports = { access: { ...mkAccess('anonymous'), kind: 'reports' } } as {
+    access: BoardAccess
+  }
+
+  it('denies every actor, team included', () => {
+    for (const actor of [anon, portal, member, admin]) {
+      const d = canVotePost(actor, published, reports)
+      expect(d.allowed).toBe(false)
+      if (!d.allowed) expect(d.reason).toMatch(/do not take votes/i)
+    }
+  })
+
+  it('still allows the vote on a feedback board', () => {
+    const feedback = { access: { ...mkAccess('anonymous'), kind: 'feedback' } } as {
+      access: BoardAccess
+    }
+    expect(canVotePost(portal, published, feedback).allowed).toBe(true)
+  })
+})
+
 describe('report boards require an account', () => {
   // A report is a public record: filing one, and replying in its thread, needs
   // a signed-in account even when a tier was left on "Anyone".

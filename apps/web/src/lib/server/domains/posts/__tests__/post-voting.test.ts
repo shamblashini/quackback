@@ -301,6 +301,34 @@ describe('voteOnPost — toggle-off (delete) branch guards post/board existence'
   })
 })
 
+describe('report boards take no votes', () => {
+  beforeEach(() => {
+    mockDbExecute.mockReset()
+    mockSelectRows.current = [{ access: { kind: 'reports' } }]
+  })
+
+  it('refuses the toggle before touching the vote tables', async () => {
+    await expect(voteOnPost(POST_ID, PRINCIPAL_ID)).rejects.toMatchObject({
+      code: 'VOTE_NOT_ALLOWED',
+    })
+    expect(mockDbExecute).not.toHaveBeenCalled()
+  })
+
+  it('refuses a team proxy vote too', async () => {
+    await expect(
+      addVoteOnBehalf(POST_ID, PRINCIPAL_ID, { type: 'proxy', externalUrl: '' }, ADMIN_ID)
+    ).rejects.toMatchObject({ code: 'VOTE_NOT_ALLOWED' })
+    expect(mockDbExecute).not.toHaveBeenCalled()
+  })
+
+  it('still lets a stale vote be removed', async () => {
+    mockDbExecute.mockResolvedValue([
+      { post_exists: true, board_exists: true, deleted: true, vote_count: 0 },
+    ])
+    await expect(removeVote(POST_ID, PRINCIPAL_ID)).resolves.toMatchObject({ removed: true })
+  })
+})
+
 describe('voteOnPost — post.voted webhook event', () => {
   const voterRow = {
     title: 'Add dark mode',
