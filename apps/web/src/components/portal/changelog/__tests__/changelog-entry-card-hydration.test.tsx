@@ -24,10 +24,7 @@ const card = () => (
   <ChangelogEntryCard
     id={'changelog_1' as ChangelogId}
     title="Faster search"
-    content="Search is faster."
-    contentJson={null}
     publishedAt="2026-10-01T20:30:00.000Z"
-    linkedPosts={[]}
   />
 )
 

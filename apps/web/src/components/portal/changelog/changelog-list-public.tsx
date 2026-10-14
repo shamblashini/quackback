@@ -98,16 +98,13 @@ export function ChangelogListPublic() {
           {entries.map((entry, index) => (
             <div
               key={entry.id}
-              className="py-10 first:pt-0 animate-in fade-in duration-200 fill-mode-backwards"
-              style={{ animationDelay: `${index * 50}ms` }}
+              className="py-1 animate-in fade-in duration-200 fill-mode-backwards"
+              style={{ animationDelay: `${Math.min(index * 30, 300)}ms` }}
             >
               <ChangelogEntryCard
                 id={entry.id}
                 title={entry.title}
-                content={entry.content}
-                contentJson={entry.contentJson}
                 publishedAt={entry.publishedAt}
-                linkedPosts={entry.linkedPosts}
                 categories={entry.categories}
               />
             </div>
