@@ -99,7 +99,7 @@ export function ChangelogEntryDetail({
             <img
               src={featuredImageUrl}
               alt={title}
-              className="mt-6 w-full rounded-xl border border-border/40 object-cover aspect-[2/1]"
+              className="mt-6 block h-auto w-full rounded-xl border border-border/40"
             />
           )}
 
