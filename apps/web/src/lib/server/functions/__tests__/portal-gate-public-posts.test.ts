@@ -108,7 +108,7 @@ vi.mock('@/lib/server/domains/settings/settings.service', () => ({
   getPortalConfig: vi.fn().mockResolvedValue({}),
 }))
 const mockCanVotePost = vi.fn(() => ({ allowed: true }) as { allowed: boolean; reason?: string })
-const mockBoardKindCondition = vi.fn(() => 'BOARD_KIND_SQL')
+const mockBoardKindCondition = vi.fn((..._a: unknown[]) => 'BOARD_KIND_SQL')
 vi.mock('@/lib/server/policy', () => ({
   canViewBoard: vi.fn(),
   postViewFilter: vi.fn(() => 'POST_VIEW_FILTER_SQL'),
