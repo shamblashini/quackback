@@ -16,6 +16,8 @@ import { shownName } from '@/lib/shared/greeting-name'
 interface AuthCommentsSectionProps {
   postId: PostId
   comments: PublicCommentView[]
+  /** The post is a report: no reactions, and only the team deletes replies. */
+  isReportThread?: boolean
   /** Server-determined: user is authenticated member who can comment */
   allowCommenting?: boolean
   /**
@@ -72,6 +74,7 @@ interface AuthCommentsSectionProps {
 export function AuthCommentsSection({
   postId,
   comments,
+  isReportThread = false,
   allowCommenting: serverAllowCommenting = false,
   replyPolicy,
   user: serverUser,
@@ -168,6 +171,7 @@ export function AuthCommentsSection({
     <CommentThread
       postId={postId}
       comments={comments}
+      isReportThread={isReportThread}
       allowCommenting={allowCommenting}
       noAccess={noAccess}
       replyPolicy={replyPolicy}

@@ -31,7 +31,7 @@ import { buildCommentTree, toStatusChange, type CommentTreeNode } from '@/lib/sh
 import type { PostWithDetails, PinnedComment } from './post.types'
 import { hydrateMentions } from './hydrate-mentions'
 import type { JSONContent } from '@tiptap/core'
-import type { TiptapContent } from '@/lib/shared/db-types'
+import { resolveBoardKind, type TiptapContent } from '@/lib/shared/db-types'
 import { contentJsonForClient } from '@/lib/server/content/storage-read-urls'
 
 /**
@@ -163,6 +163,7 @@ export async function getPostWithDetails(postId: PostId): Promise<PostWithDetail
       id: board.id,
       name: board.name,
       slug: board.slug,
+      kind: resolveBoardKind(board.access),
     },
     tags: postTagsResult.map((t) => ({
       id: t.id,

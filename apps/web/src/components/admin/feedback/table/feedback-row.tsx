@@ -32,6 +32,8 @@ export const FeedbackRow = memo(function FeedbackRow({
           statusId={post.statusId}
           statuses={statuses}
           voteCount={post.voteCount}
+          // Report posts carry no votes, even for the team.
+          hideVote={post.board.kind === 'reports'}
           commentCount={post.commentCount}
           authorName={post.authorName}
           createdAt={post.createdAt}

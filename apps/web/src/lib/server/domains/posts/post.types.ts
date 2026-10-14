@@ -2,7 +2,7 @@
  * Input/Output types for PostService operations
  */
 
-import type { Post, Board, BoardAccess, PostTag, TiptapContent } from '@/lib/server/db'
+import type { Post, Board, BoardAccess, BoardKind, PostTag, TiptapContent } from '@/lib/server/db'
 import type {
   PostId,
   BoardId,
@@ -181,7 +181,7 @@ export interface InboxFilterCounts {
  * Post list item with board, tags, and comment count
  */
 export interface PostListItem extends Post {
-  board: Pick<Board, 'id' | 'name' | 'slug'>
+  board: Pick<Board, 'id' | 'name' | 'slug'> & { kind?: BoardKind }
   tags: Array<Pick<PostTag, 'id' | 'name' | 'color'> & { autoTagged: boolean }>
   commentCount: number
   /** Author name resolved from member->user relation */

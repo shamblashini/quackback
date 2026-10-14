@@ -55,6 +55,8 @@ export function CommentsSectionSkeleton({ count = 3 }: { count?: number }) {
 interface CommentsSectionProps {
   postId: PostId
   comments: PublicCommentView[]
+  /** The post is a report: no reactions, and only the team deletes replies. */
+  isReportThread?: boolean
   pinnedCommentId?: string | null
   // Admin mode props
   /** Enable comment pinning (admin only) */
@@ -104,6 +106,7 @@ interface CommentsSectionProps {
 export function CommentsSection({
   postId,
   comments,
+  isReportThread = false,
   pinnedCommentId,
   canPinComments = false,
   onPinComment,
@@ -172,6 +175,7 @@ export function CommentsSection({
       <AuthCommentsSection
         postId={postId}
         comments={comments}
+        isReportThread={isReportThread}
         allowCommenting={allowCommenting}
         replyPolicy={replyPolicy}
         user={adminUser ?? data?.user}

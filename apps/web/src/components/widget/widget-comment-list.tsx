@@ -31,6 +31,8 @@ interface WidgetCommentListProps {
   comments: PublicCommentView[]
   pinnedCommentId: string | null
   canComment?: boolean
+  /** The post is a report: no reactions. */
+  isReportThread?: boolean
   onSubmitComment?: (
     content: string,
     contentJson: TiptapContent | null,
@@ -43,6 +45,7 @@ export function WidgetCommentList({
   comments,
   pinnedCommentId,
   canComment = false,
+  isReportThread = false,
   onSubmitComment,
   onImageUpload,
 }: WidgetCommentListProps) {
@@ -74,6 +77,7 @@ export function WidgetCommentList({
           pinnedCommentId={pinnedCommentId}
           depth={0}
           canComment={canComment}
+          isReportThread={isReportThread}
           onSubmitComment={onSubmitComment}
           onImageUpload={onImageUpload}
         />
@@ -87,6 +91,7 @@ interface WidgetCommentItemProps {
   pinnedCommentId: string | null
   depth: number
   canComment: boolean
+  isReportThread: boolean
   onSubmitComment?: (
     content: string,
     contentJson: TiptapContent | null,
@@ -100,6 +105,7 @@ function WidgetCommentItem({
   pinnedCommentId,
   depth,
   canComment,
+  isReportThread,
   onSubmitComment,
   onImageUpload,
 }: WidgetCommentItemProps) {
@@ -241,6 +247,7 @@ function WidgetCommentItem({
                   pinnedCommentId={pinnedCommentId}
                   depth={depth + 1}
                   canComment={canComment}
+                  isReportThread={isReportThread}
                   onSubmitComment={onSubmitComment}
                   onImageUpload={onImageUpload}
                 />
@@ -315,43 +322,46 @@ function WidgetCommentItem({
           )}
 
           {/* Existing reactions — hover shows who reacted. */}
-          {reactions.map((reaction) => (
-            <ReactionChip
-              key={reaction.emoji}
-              emoji={reaction.emoji}
-              count={reaction.count}
-              hasReacted={reaction.hasReacted}
-              reactors={reaction.reactors}
-              disabled={reactionPending}
-              onToggle={() => handleReaction(reaction.emoji)}
-            />
-          ))}
-
-          {/* Add reaction button */}
-          <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
+          {!isReportThread &&
+            reactions.map((reaction) => (
+              <ReactionChip
+                key={reaction.emoji}
+                emoji={reaction.emoji}
+                count={reaction.count}
+                hasReacted={reaction.hasReacted}
+                reactors={reaction.reactors}
                 disabled={reactionPending}
-                className="h-5 w-5 flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-              >
-                <FaceSmileIcon className="h-3.5 w-3.5" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-1.5" align="start">
-              <div className="flex gap-0.5">
-                {REACTION_EMOJIS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    onClick={() => handleReaction(emoji)}
-                    className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-sm transition-colors"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+                onToggle={() => handleReaction(reaction.emoji)}
+              />
+            ))}
+
+          {/* Add reaction button. Report threads carry no public-opinion signal. */}
+          {!isReportThread && (
+            <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  disabled={reactionPending}
+                  className="h-5 w-5 flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                >
+                  <FaceSmileIcon className="h-3.5 w-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-1.5" align="start">
+                <div className="flex gap-0.5">
+                  {REACTION_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => handleReaction(emoji)}
+                      className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-sm transition-colors"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
 
           {/* Reply button */}
           {canComment && canShowReplies && (
@@ -455,6 +465,7 @@ function WidgetCommentItem({
                 pinnedCommentId={pinnedCommentId}
                 depth={depth + 1}
                 canComment={canComment}
+                isReportThread={isReportThread}
                 onSubmitComment={onSubmitComment}
               />
             ))}

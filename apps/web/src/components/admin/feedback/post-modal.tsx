@@ -114,6 +114,8 @@ export const PostModalContent = memo(function PostModalContent({
   })
 
   const post = postQuery.data as PostDetails
+  // Report posts carry no votes or reactions, even for the team.
+  const isReport = post.board.kind === 'reports'
 
   // "Show more comments" — appends the next keyset page into the same
   // ['inbox','detail',postId] cache the admin comment mutations patch.
@@ -508,6 +510,7 @@ export const PostModalContent = memo(function PostModalContent({
                   <CommentsSection
                     postId={postId}
                     comments={toPortalComments(post)}
+                    isReportThread={isReport}
                     pinnedCommentId={post.pinnedCommentId}
                     canPinComments
                     onPinComment={(commentId) => pinComment.mutate(commentId)}
@@ -565,6 +568,7 @@ export const PostModalContent = memo(function PostModalContent({
               eta={post.eta ?? null}
               tags={post.tags}
               canEdit
+              hideVote={isReport}
               showVoters
               allStatuses={statuses}
               allTags={tags}

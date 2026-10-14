@@ -63,6 +63,8 @@ interface PostCardProps {
   isAuthenticated?: boolean
   /** Whether the user can vote (true if authenticated or anonymous voting enabled) */
   canVote?: boolean
+  /** Drop the vote column entirely (report posts carry no votes). */
+  hideVote?: boolean
   /** Whether the current user is the author of this post */
   isCurrentUserAuthor?: boolean
   /** Whether the user can edit this post */
@@ -122,6 +124,7 @@ export function PostCard({
   tags,
   isAuthenticated = true,
   canVote = true,
+  hideVote = false,
   isCurrentUserAuthor = false,
   canEdit = false,
   canDelete = false,
@@ -486,7 +489,7 @@ export function PostCard({
   const cardContent = (
     <div className="flex items-start p-4 gap-4">
       {/* Vote column */}
-      {voteButton}
+      {!hideVote && voteButton}
 
       {/* Main content */}
       <div className="flex-1 min-w-0">

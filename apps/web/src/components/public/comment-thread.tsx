@@ -121,6 +121,11 @@ function PrivateNoteCard({ children }: { children: React.ReactNode }) {
 
 interface CommentThreadProps {
   postId: PostId
+  /**
+   * The thread belongs to a report: a public record with no reactions, where
+   * only the team can delete a reply.
+   */
+  isReportThread?: boolean
   comments: PublicCommentView[]
   allowCommenting?: boolean
   /**
@@ -184,6 +189,7 @@ interface CommentThreadProps {
 
 export function CommentThread({
   postId,
+  isReportThread = false,
   comments,
   allowCommenting = true,
   noAccess = false,
@@ -301,6 +307,7 @@ export function CommentThread({
         <div className="space-y-4">
           {renderGroupedComments(sortedComments, {
             postId,
+            isReportThread,
             allowCommenting,
             user,
             teamBadgeLogoUrl,
@@ -329,6 +336,8 @@ export function CommentThread({
 
 interface CommentItemProps {
   postId: PostId
+  /** See CommentThreadProps.isReportThread. */
+  isReportThread?: boolean
   comment: PublicCommentView
   allowCommenting: boolean
   depth?: number
@@ -365,6 +374,7 @@ const MAX_NESTING_DEPTH = 5
 
 function CommentItem({
   postId,
+  isReportThread = false,
   comment,
   allowCommenting,
   depth = 0,
@@ -433,7 +443,9 @@ function CommentItem({
   // Server re-checks; client heuristic avoids showing the button to unrelated users
   const isAuthor = !!user?.principalId && comment.principalId === user.principalId
   const canEdit = !isDeleted && (isTeamMember || isAuthor)
-  const canDelete = !isDeleted && !!onDeleteComment && (isTeamMember || isAuthor)
+  // A report thread is a public record: only the team can delete a reply.
+  const canDelete =
+    !isDeleted && !!onDeleteComment && (isTeamMember || (isAuthor && !isReportThread))
   const isBeingDeleted = deletingCommentId === comment.id
   // Can restore: deleted, team member, and restore handler provided
   const canRestore = isDeleted && isTeamMember && !!onRestoreComment
@@ -545,6 +557,7 @@ function CommentItem({
                   <CommentItem
                     key={reply.id}
                     postId={postId}
+                    isReportThread={isReportThread}
                     comment={reply}
                     allowCommenting={allowCommenting}
                     depth={depth + 1}
@@ -853,6 +866,7 @@ function CommentItem({
 
             {/* Existing reactions — hover shows who reacted. */}
             {!isDeleted &&
+              !isReportThread &&
               reactions.map((reaction) => (
                 <ReactionChip
                   key={reaction.emoji}
@@ -865,8 +879,8 @@ function CommentItem({
                 />
               ))}
 
-            {/* Add reaction button */}
-            {!isDeleted && (
+            {/* Add reaction button. Report threads carry no public-opinion signal. */}
+            {!isDeleted && !isReportThread && (
               <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
                 <PopoverTrigger asChild>
                   <Button
@@ -1062,6 +1076,7 @@ function CommentItem({
                 <CommentItem
                   key={reply.id}
                   postId={postId}
+                  isReportThread={isReportThread}
                   comment={reply}
                   allowCommenting={allowCommenting}
                   depth={depth + 1}

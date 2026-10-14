@@ -1271,7 +1271,7 @@ export type PostWithDetails = Post & {
 
 // Inbox query types
 export type PostListItem = Post & {
-  board: Pick<Board, 'id' | 'name' | 'slug'>
+  board: Pick<Board, 'id' | 'name' | 'slug'> & { kind?: BoardKind }
   tags: Pick<PostTag, 'id' | 'name' | 'color'>[]
   commentCount: number
   authorName: string | null

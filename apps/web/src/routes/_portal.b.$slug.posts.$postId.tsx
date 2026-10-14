@@ -386,7 +386,7 @@ function PostDetailPage() {
               ownerCandidates={team.ownerCandidates}
               onOwnerChange={team.onOwnerChange}
               isUpdating={team.isMetaUpdating}
-              showVoters={team.canVoteOnBehalf}
+              showVoters={team.canVoteOnBehalf && post.boardKind !== 'reports'}
               votersQuery={team.votersQuery}
               votersCanAddVoter={team.canSearchPeople}
               votersCanCreateUser={team.canCreatePeople}
@@ -403,6 +403,7 @@ function PostDetailPage() {
           <CommentsSection
             postId={postId}
             comments={post.comments}
+            isReportThread={post.boardKind === 'reports'}
             pinnedCommentId={post.pinnedCommentId}
             disableCommenting={!!post.mergeInfo || !!post.isCommentsLocked}
             lockedMessage={

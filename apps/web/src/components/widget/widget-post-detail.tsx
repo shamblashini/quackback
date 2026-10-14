@@ -138,6 +138,8 @@ export function WidgetPostDetail({ postId, statuses }: WidgetPostDetailProps) {
   // old workspace-wide anonymous flags, which advertised CTAs on boards whose
   // per-action tier requires sign-in (#191). Undefined (legacy/cached) → false.
   const canVote = post?.canVote ?? false
+  // Report posts carry no votes or reactions.
+  const isReport = post?.boardKind === 'reports'
   const canComment = post?.canComment ?? false
   // Identified viewer denied by the board tier (segments/team) = authorization,
   // not auth. Vote shows a dimmed tooltip; the comment form is replaced with the
@@ -202,25 +204,27 @@ export function WidgetPostDetail({ postId, statuses }: WidgetPostDetailProps) {
       <div className="mx-auto w-full max-w-2xl px-3 pt-3 pb-4 space-y-3">
         {/* Header: mirrors widget listing layout (vote left, status/title right) */}
         <div className="flex items-start gap-3">
-          <div className="shrink-0 mt-0.5">
-            <WidgetVoteButton
-              postId={postId as PostId}
-              voteCount={post.voteCount}
-              onBeforeVote={
-                canVote
-                  ? async () => {
-                      let success = false
-                      await ensureSessionThen(() => {
-                        success = true
-                      })
-                      return success
-                    }
-                  : undefined
-              }
-              noAccessReason={voteNoAccessReason}
-              onAuthRequired={!canVote ? handleViewOnPortal : undefined}
-            />
-          </div>
+          {!isReport && (
+            <div className="shrink-0 mt-0.5">
+              <WidgetVoteButton
+                postId={postId as PostId}
+                voteCount={post.voteCount}
+                onBeforeVote={
+                  canVote
+                    ? async () => {
+                        let success = false
+                        await ensureSessionThen(() => {
+                          success = true
+                        })
+                        return success
+                      }
+                    : undefined
+                }
+                noAccessReason={voteNoAccessReason}
+                onAuthRequired={!canVote ? handleViewOnPortal : undefined}
+              />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               {status && (
@@ -355,6 +359,7 @@ export function WidgetPostDetail({ postId, statuses }: WidgetPostDetailProps) {
             comments={post.comments}
             pinnedCommentId={post.pinnedCommentId}
             canComment={canComment && !post.isCommentsLocked}
+            isReportThread={isReport}
             onSubmitComment={handleSubmitReply}
             onImageUpload={uploadMedia}
           />

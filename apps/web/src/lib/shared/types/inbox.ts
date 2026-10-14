@@ -5,7 +5,7 @@
  * Moved here to centralize domain types and fix import direction.
  */
 
-import type { Board, PostTag } from '@/lib/shared/db-types'
+import type { Board, BoardKind, PostTag } from '@/lib/shared/db-types'
 import type { PostId, PostStatusId, PostCommentId, PrincipalId } from '@quackback/ids'
 import type { CommentTreeNode, CommentReactionCount } from '@/lib/shared'
 
@@ -49,7 +49,7 @@ export interface PostDetails {
   createdAt: Date
   /** Target ship date (time-based roadmap); null when unset. */
   eta?: Date | string | null
-  board: Pick<Board, 'id' | 'name' | 'slug'>
+  board: Pick<Board, 'id' | 'name' | 'slug'> & { kind?: BoardKind }
   tags: Pick<PostTag, 'id' | 'name' | 'color'>[]
   comments: CommentWithReplies[]
   /** Whether more root comments exist beyond what's loaded (keyset pagination). */

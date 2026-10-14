@@ -22,6 +22,7 @@ import {
   isNotNull,
 } from '@/lib/server/db'
 import { postViewFilter } from '@/lib/server/policy/posts'
+import { resolveBoardKind } from '@/lib/shared/db-types'
 import type { Actor } from '@/lib/server/policy/types'
 import { toUuid, type PostId, type PrincipalId } from '@quackback/ids'
 import { notTestPrincipal } from '@/lib/server/test-data'
@@ -299,7 +300,7 @@ export async function listInboxPosts(
     limit: limit + 1,
     with: {
       board: {
-        columns: { id: true, name: true, slug: true },
+        columns: { id: true, name: true, slug: true, access: true },
       },
       tags: {
         with: {
@@ -323,7 +324,13 @@ export async function listInboxPosts(
   // that no caller reads from list items, but PostListItem extends the full Post type.
   const items = sliced.map((post) => ({
     ...post,
-    board: post.board,
+    // The board kind rides along instead of the access matrix.
+    board: {
+      id: post.board.id,
+      name: post.board.name,
+      slug: post.board.slug,
+      kind: resolveBoardKind(post.board.access),
+    },
     tags: post.tags.map((pt) => ({ ...pt.tag, autoTagged: pt.autoTagged })),
     commentCount: post.commentCount,
     authorName: post.author?.displayName ?? null,
