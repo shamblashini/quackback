@@ -62,6 +62,17 @@ export async function changeStatus(
 
   const previousStatusName = prevStatus?.name ?? 'Open'
 
+  // Setting the status the post already has is a no-op: no write, no event,
+  // no activity entry (it would read "Status changed to Open" while Open).
+  if (existingPost.statusId === statusId) {
+    return {
+      ...existingPost,
+      boardSlug: board.slug,
+      previousStatus: previousStatusName,
+      newStatus: newStatus.name,
+    }
+  }
+
   // Update the post status
   const [updatedPost] = await db
     .update(posts)

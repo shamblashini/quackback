@@ -140,8 +140,14 @@ export async function createComment(
   }
 
   // Determine if a status change should be applied
-  // Only for team members, root-level comments, with a valid statusId
-  const shouldChangeStatus = !!(input.statusId && authorIsTeamMember && !input.parentId)
+  // Only for team members, root-level comments, with a valid statusId that
+  // differs from the post's current one (re-applying it is not a change).
+  const shouldChangeStatus = !!(
+    input.statusId &&
+    authorIsTeamMember &&
+    !input.parentId &&
+    input.statusId !== post.statusId
+  )
 
   const trimmedContent = input.content.trim()
   const { content: storedContent, contentJson } = await prepareCommentContent({

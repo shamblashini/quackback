@@ -379,6 +379,24 @@ describe('createComment — records a status.changed activity for the audit log'
     )
   })
 
+  it('does NOT record or dispatch a status change when the comment re-applies the current status', async () => {
+    const { createActivity } = await import('@/lib/server/domains/activity/activity.service')
+    const { dispatchPostStatusChanged } = await import('@/lib/server/events/dispatch')
+    const { createComment } = await import('../comment.service')
+    await createComment(
+      {
+        postId: 'post_p' as unknown as PostId,
+        content: 'Still open',
+        // The mocked post is already in post_status_open.
+        statusId: 'post_status_open' as unknown as PostStatusId,
+      },
+      { principalId: 'principal_admin' as unknown as PrincipalId, role: 'admin' },
+      teamActor
+    )
+    expect(vi.mocked(createActivity)).not.toHaveBeenCalled()
+    expect(vi.mocked(dispatchPostStatusChanged)).not.toHaveBeenCalled()
+  })
+
   it('does NOT record a status.changed activity for an ordinary comment', async () => {
     const { createActivity } = await import('@/lib/server/domains/activity/activity.service')
     const { createComment } = await import('../comment.service')
