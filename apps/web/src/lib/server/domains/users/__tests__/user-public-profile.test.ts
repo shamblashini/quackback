@@ -25,6 +25,7 @@ const hoisted = vi.hoisted(() => {
     whereCalls,
     innerJoinCalls,
     mockPostViewFilter: vi.fn(() => 'POST_VIEW_FILTER'),
+    mockBoardKindCondition: vi.fn(() => 'FEEDBACK_KIND_FILTER'),
     mockAnd: vi.fn((...args: unknown[]) => ({ op: 'and', args })),
     mockEq: vi.fn((col: unknown, val: unknown) => ({ op: 'eq', col, val })),
     mockInArray: vi.fn((col: unknown, vals: unknown) => ({ op: 'inArray', col, vals })),
@@ -143,6 +144,7 @@ vi.mock('@/lib/server/db', async (importOriginal) => ({
 
 vi.mock('@/lib/server/policy', () => ({
   postViewFilter: hoisted.mockPostViewFilter,
+  boardKindCondition: hoisted.mockBoardKindCondition,
 }))
 
 vi.mock('@/lib/server/storage/s3', () => ({
@@ -266,6 +268,24 @@ describe('getPublicUserProfile', () => {
     expect(activityPredicates).toHaveLength(6)
     for (const predicate of activityPredicates) {
       expect(containsViewerFilter(predicate)).toBe(true)
+    }
+  })
+
+  it('keeps report-board posts out of every activity query', async () => {
+    queueProfileQueries({ owner: [OWNER_ROW], posts: [POST_ROW], counts: [1, 0, 0] })
+    await getPublicUserProfile(PRINCIPAL_ID, VIEWER)
+
+    expect(hoisted.mockBoardKindCondition).toHaveBeenCalledWith('feedback')
+    const containsKindFilter = (value: unknown): boolean => {
+      if (value === 'FEEDBACK_KIND_FILTER') return true
+      if (Array.isArray(value)) return value.some(containsKindFilter)
+      if (value && typeof value === 'object' && 'args' in value) {
+        return containsKindFilter(value.args)
+      }
+      return false
+    }
+    for (const predicate of hoisted.whereCalls.slice(1)) {
+      expect(containsKindFilter(predicate)).toBe(true)
     }
   })
 

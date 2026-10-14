@@ -39,7 +39,7 @@ import type { PrincipalId, SegmentId } from '@quackback/ids'
 import { InternalError } from '@/lib/shared/errors'
 import { realEmail } from '@/lib/shared/anonymous-email'
 import { resolveUserAvatarUrl } from '@/lib/server/domains/principals/principal-display'
-import { postViewFilter, type Actor } from '@/lib/server/policy'
+import { postViewFilter, boardKindCondition, type Actor } from '@/lib/server/policy'
 import { logger } from '@/lib/server/logger'
 import { notTestPrincipal } from '@/lib/server/test-data'
 
@@ -146,8 +146,13 @@ export async function getPublicUserProfile(
     // Every activity query composes postViewFilter(actor): board audience
     // (anonymous/authenticated/segments/team) + moderation state, from the
     // VIEWER's perspective. Requires the boards join (boardViewFilter reads
-    // boards.access) — postViewFilter's own contract.
-    const viewerFilter = and(postViewFilter(actor), notTestPrincipal(posts.principalId))
+    // boards.access) — postViewFilter's own contract. Report posts are not
+    // public activity: they live on the reports page only.
+    const viewerFilter = and(
+      postViewFilter(actor),
+      boardKindCondition('feedback'),
+      notTestPrincipal(posts.principalId)
+    )
 
     const activityColumns = {
       postId: posts.id,

@@ -21,6 +21,7 @@ import {
   sql,
 } from '@/lib/server/db'
 import type { BoardId, ChangelogId, PrincipalId, PostId, PostStatusId } from '@quackback/ids'
+import { boardKindCondition } from '@/lib/server/policy/boards'
 import { computeStatus } from './changelog.service'
 import { getCategoriesForEntries } from './changelog-category.service'
 import { contentJsonForClient } from '@/lib/server/content/storage-read-urls'
@@ -237,7 +238,12 @@ export async function searchShippedPosts(params: {
   const statusIds = completeStatuses.map((s) => s.id)
 
   // Build conditions
-  const conditions = [inArray(posts.statusId, statusIds), isNull(posts.deletedAt)]
+  // Report posts are never linked from a changelog.
+  const conditions = [
+    inArray(posts.statusId, statusIds),
+    isNull(posts.deletedAt),
+    boardKindCondition('feedback'),
+  ]
 
   if (boardId) {
     conditions.push(eq(posts.boardId, boardId))

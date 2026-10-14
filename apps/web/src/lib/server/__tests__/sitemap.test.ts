@@ -3,6 +3,7 @@ import {
   buildSitemap,
   buildSitemapIndex,
   escapeXml,
+  isSitemapPostBoard,
   MAX_URLS_PER_SITEMAP,
   renderSitemap,
 } from '../sitemap'
@@ -152,5 +153,27 @@ describe('sitemap helpers', () => {
       // totalPages = 1, page 1 is valid, should return the sitemap
       expect(xml).toContain('<urlset')
     })
+  })
+})
+
+describe('isSitemapPostBoard', () => {
+  const pub = { slug: 'ideas', access: { view: 'anonymous' } } as never
+
+  it('includes anonymously viewable feedback boards', () => {
+    expect(isSitemapPostBoard(pub)).toBe(true)
+  })
+
+  it('excludes report boards', () => {
+    expect(
+      isSitemapPostBoard({ slug: 'bugs', access: { view: 'anonymous', kind: 'reports' } } as never)
+    ).toBe(false)
+  })
+
+  it('excludes non-public and deleted boards', () => {
+    expect(isSitemapPostBoard({ slug: 'x', access: { view: 'authenticated' } } as never)).toBe(
+      false
+    )
+    expect(isSitemapPostBoard({ ...(pub as object), deletedAt: new Date() } as never)).toBe(false)
+    expect(isSitemapPostBoard(null)).toBe(false)
   })
 })

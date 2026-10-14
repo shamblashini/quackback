@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import type { SitemapUrl } from '@/lib/server/sitemap'
+import { isSitemapPostBoard, type SitemapUrl } from '@/lib/server/sitemap'
 import { notTestPrincipal } from '@/lib/server/test-data'
 import { publicWorkspaceCacheHeaders } from '@/lib/server/workspaces/http-cache'
 
@@ -114,9 +114,9 @@ async function collectUrls(baseUrl: string): Promise<SitemapUrl[]> {
     : []
 
   for (const post of publicPosts) {
-    if (post.board?.slug && post.board.access?.view === 'anonymous' && !post.board.deletedAt) {
+    if (post.board && isSitemapPostBoard(post.board)) {
       urls.push({
-        loc: `${baseUrl}/b/${post.board.slug}/posts/${post.id}`,
+        loc: `${baseUrl}/b/${post.board!.slug}/posts/${post.id}`,
         lastmod: toIsoDateOnly(post.updatedAt),
       })
     }

@@ -18,6 +18,7 @@ import {
 } from '@/lib/server/db'
 import type { ChangelogId, PostStatusId } from '@quackback/ids'
 import { NotFoundError } from '@/lib/shared/errors'
+import { boardKindCondition } from '@/lib/server/policy/boards'
 import { computeStatus } from './changelog.service'
 import { getCategoriesForEntries, categoryGateAllows } from './changelog-category.service'
 import { ANONYMOUS_ACTOR, type Actor } from '@/lib/server/policy/types'
@@ -137,7 +138,9 @@ export async function getPublicChangelogById(
         eq(posts.moderationState, 'published'),
         isNull(boards.deletedAt),
         sql`${boards.access}->>'view' = 'anonymous'`,
-        // 5. A test customer's idea is never public.
+        // 5. Report posts are not part of the public feedback story.
+        boardKindCondition('feedback'),
+        // 6. A test customer's idea is never public.
         notTestPrincipal(posts.principalId)
       )
     )
@@ -261,7 +264,8 @@ export async function listPublicChangelogs(
               isNull(posts.deletedAt),
               eq(posts.moderationState, 'published'),
               isNull(boards.deletedAt),
-              sql`${boards.access}->>'view' = 'anonymous'`
+              sql`${boards.access}->>'view' = 'anonymous'`,
+              boardKindCondition('feedback')
             )
           )
       : []

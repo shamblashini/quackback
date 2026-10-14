@@ -7,7 +7,22 @@
  * - Generates a sitemap index when URL count exceeds the per-file limit
  */
 
+import type { BoardAccess } from '@/lib/server/db'
+import { resolveBoardKind } from '@/lib/shared/db-types'
+
 export const MAX_URLS_PER_SITEMAP = 50_000
+
+/**
+ * Whether posts on this board belong in the sitemap: anonymously viewable,
+ * not deleted, and not a report board (reports are readable by design but are
+ * not meant to be indexed by search engines).
+ */
+export function isSitemapPostBoard(
+  board: { slug?: string | null; access?: BoardAccess | null; deletedAt?: Date | null } | null
+): boolean {
+  if (!board?.slug || board.deletedAt) return false
+  return board.access?.view === 'anonymous' && resolveBoardKind(board.access) !== 'reports'
+}
 
 export interface SitemapAlternate {
   /** A locale code, or the literal 'x-default' for the unprefixed fallback. */
