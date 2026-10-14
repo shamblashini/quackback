@@ -112,3 +112,32 @@ describe('buildDiscordMessage — changelog.published', () => {
     expect(message.allowed_mentions).toEqual({ parse: [] })
   })
 })
+
+describe('buildDiscordMessage — post.created', () => {
+  const event = {
+    id: 'evt_2',
+    timestamp: '2026-07-21T12:00:00.000Z',
+    actor: { type: 'user', id: 'principal_1', name: 'Test User' },
+    type: 'post.created',
+    data: {
+      post: {
+        id: 'post_123',
+        title: 'Add dark mode',
+        content: 'A long body that belongs on the portal, not in the channel',
+        boardId: 'board_1',
+        boardSlug: 'features',
+        authorName: 'Ada',
+        voteCount: 0,
+      },
+    },
+  } as unknown as EventData
+
+  it('posts the title and a link to read the post, without the body', () => {
+    const embed = buildDiscordMessage(event, ROOT_URL).embeds?.[0]
+    const postUrl = `${ROOT_URL}/b/features/posts/post_123`
+
+    expect(embed).toMatchObject({ title: 'Add dark mode', url: postUrl })
+    expect(embed?.description).toBe(`**[Read the post →](${postUrl})**`)
+    expect(JSON.stringify(embed)).not.toContain('long body')
+  })
+})

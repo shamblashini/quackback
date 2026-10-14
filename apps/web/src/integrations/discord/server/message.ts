@@ -64,15 +64,15 @@ export function buildDiscordMessage(event: EventData, rootUrl: string): DiscordM
     case 'post.created': {
       const { post } = event.data
       const postUrl = buildPostUrl(rootUrl, post.boardSlug, post.id)
-      const content = truncate(stripHtml(post.content), 300)
       const author = getAuthorName(post)
 
+      // Title only: the post's body is read on the portal, not in the channel.
       return {
         embeds: [
           {
             title: truncate(post.title, 256),
             url: postUrl,
-            description: content || undefined,
+            description: `**[Read the post →](${postUrl})**`,
             color: COLORS.blue,
             author: { name: `📬 New feedback from ${author}` },
             footer: { text: `Board: ${post.boardSlug}` },
