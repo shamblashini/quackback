@@ -12,11 +12,13 @@ import {
  * Create-board preset. Maps to a BoardAccess matrix on the server:
  *   - 'public'  → view=anonymous, vote/comment/submit=authenticated
  *   - 'private' → view/vote/comment/submit=team
+ *   - 'reports' → a public report board: anyone views, sign-in to file or
+ *                 reply, nobody votes, only the reporter and team reply
  *
  * Finer-grained access (segments, asymmetric tiers) is set after create
  * via the Access tab — admin-only and audited.
  */
-export const boardPresetSchema = z.enum(['public', 'private'])
+export const boardPresetSchema = z.enum(['public', 'private', 'reports'])
 export type BoardPreset = z.infer<typeof boardPresetSchema>
 
 /**
@@ -69,6 +71,21 @@ export function normalizeBoardAccess(access: Partial<BoardAccess> | null | undef
 }
 
 export function accessForPreset(preset: BoardPreset): BoardAccess {
+  if (preset === 'reports') {
+    // Created as a report board from the start, so it is never briefly an
+    // ordinary feedback board on the portal. Same preset the Access tab's
+    // "Public report board" switch applies.
+    return {
+      kind: 'reports',
+      view: 'anonymous',
+      vote: 'team',
+      comment: 'authenticated',
+      submit: 'authenticated',
+      segments: { view: [], vote: [], comment: [], submit: [] },
+      moderation: { anonPosts: 'inherit', signedPosts: 'inherit', comments: 'inherit' },
+      replyPolicy: 'author-only',
+    }
+  }
   if (preset === 'private') {
     return {
       view: 'team',

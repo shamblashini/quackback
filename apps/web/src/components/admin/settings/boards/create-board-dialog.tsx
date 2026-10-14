@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { GlobeAltIcon, LockClosedIcon } from '@heroicons/react/24/solid'
+import { GlobeAltIcon, LockClosedIcon, ShieldCheckIcon } from '@heroicons/react/24/solid'
 import {
   Form,
   FormControl,
@@ -160,7 +160,7 @@ export function CreateBoardDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Access</FormLabel>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                       <PresetTile
                         active={field.value === 'public'}
                         label="Everyone"
@@ -174,6 +174,13 @@ export function CreateBoardDialog({
                         description="Workspace members only. Hidden from the portal."
                         icon={<LockClosedIcon className="h-3.5 w-3.5" />}
                         onClick={() => field.onChange('private')}
+                      />
+                      <PresetTile
+                        active={field.value === 'reports'}
+                        label="Public reports"
+                        description="Listed on /reports. Anyone reads, sign-in to file. No votes."
+                        icon={<ShieldCheckIcon className="h-3.5 w-3.5" />}
+                        onClick={() => field.onChange('reports')}
                       />
                     </div>
                     <FormMessage />

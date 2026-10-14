@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { accessForPreset, normalizeBoardAccess, presetForAccess } from '../boards'
+import {
+  accessForPreset,
+  boardAccessSchema,
+  normalizeBoardAccess,
+  presetForAccess,
+} from '../boards'
 import { DEFAULT_BOARD_ACCESS } from '@/lib/shared/db-types'
 
 describe('accessForPreset', () => {
@@ -29,6 +34,22 @@ describe('accessForPreset', () => {
       signedPosts: 'inherit',
       comments: 'inherit',
     })
+  })
+})
+
+describe('accessForPreset — reports', () => {
+  it('creates a public report board: anyone reads, sign-in to file and reply, no votes', () => {
+    const a = accessForPreset('reports')
+    expect(a.kind).toBe('reports')
+    expect(a.view).toBe('anonymous')
+    expect(a.vote).toBe('team')
+    expect(a.comment).toBe('authenticated')
+    expect(a.submit).toBe('authenticated')
+    expect(a.replyPolicy).toBe('author-only')
+  })
+
+  it('passes the board access schema', () => {
+    expect(boardAccessSchema.safeParse(accessForPreset('reports')).success).toBe(true)
   })
 })
 
