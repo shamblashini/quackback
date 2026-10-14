@@ -9,6 +9,17 @@ have no session or co-author trailers.
 
 ## Ready to PR
 
+### Setting a post's current status again sends a notification
+
+- **What:** picking the status a post already has emits a status-changed
+  event, so subscribers get "Status changed to Open" for a post that was
+  already Open.
+- **Fix:** `changeStatus` in `domains/posts/post.status.ts` returns early when
+  the status is unchanged. `comment.service.ts` no longer counts a comment
+  that re-applies the current status as a status change. On selfhost:
+  `b70538d37`, with tests in `post-status.test.ts`.
+- **Upstream:** not checked against upstream/main yet. Check before the PR.
+
 ### Roadmap columns show two scrollbars
 
 - **What:** each public roadmap column shows a dead scrollbar pinned at the
@@ -66,6 +77,17 @@ have no session or co-author trailers.
 - **Before proposing:** check whether upstream still has the problem.
 
 ## Selfhost only (not for upstream)
+
+- **Report boards: open product decisions.** Behaviour is unchanged until you
+  decide:
+  - report-specific statuses instead of the feedback ones;
+  - whether reporters can reply after a report is closed (today they can;
+    moderators can lock the post);
+  - whether the reporter's name is shown publicly (today it is);
+  - cleanup of legacy votes and reactions on reports filed before
+    2026-10-15. The SQL is in the session notes: zero `vote_count`, then
+    delete the `post_votes` and `post_comment_reactions` rows on report
+    boards.
 
 - **Changelog list without bodies** (`66c58b1ef`): a product preference.
 - **Discord new-post messages show only the title** (`feef655a6`): a product
