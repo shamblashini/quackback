@@ -167,10 +167,11 @@ function buildPostFilterConditions(params: PostListParams, actor: Actor) {
     isNull(posts.deletedAt),
   ]
 
+  // The kind filter always applies, slug or not: a report board's slug must not
+  // turn it into a feedback list (`/?board=<report-slug>`, widget, search).
+  conditions.push(boardKindCondition(params.boardKind ?? 'feedback'))
   if (boardSlug) {
     conditions.push(eq(boards.slug, boardSlug))
-  } else {
-    conditions.push(boardKindCondition(params.boardKind ?? 'feedback'))
   }
 
   if (statusSlugs && statusSlugs.length > 0) {

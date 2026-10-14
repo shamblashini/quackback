@@ -105,6 +105,55 @@ vi.mock('@/lib/server/db', async (importOriginal) => ({
   principal: { id: Symbol('principal.id') },
 }))
 
+/** Flatten the raw text chunks of a drizzle SQL fragment (static parts only). */
+function sqlText(frag: unknown): string {
+  const chunks = (frag as { queryChunks?: unknown[] })?.queryChunks
+  if (!Array.isArray(chunks)) return ''
+  return chunks
+    .map((c) => {
+      const value = (c as { value?: unknown })?.value
+      if (Array.isArray(value)) return value.join('')
+      return sqlText(c)
+    })
+    .join('')
+}
+
+describe('listPublicPostsWithVotesAndAvatars — board kind filter', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockSubWhere.mockReturnValue(SUBQUERY_MARKER)
+    mockMainOffset.mockResolvedValue([])
+    mockMainLimit.mockReturnValue({ offset: mockMainOffset })
+    mockMainOrderBy.mockReturnValue({ limit: mockMainLimit })
+    mockMainWhere.mockReturnValue({ orderBy: mockMainOrderBy })
+    mockMainInnerJoin.mockReturnValue({ where: mockMainWhere })
+  })
+
+  function whereKindText(): string {
+    const andArgs = mockAnd.mock.calls.flatMap((c) => c)
+    return andArgs.map(sqlText).join('|')
+  }
+
+  it('keeps reports out of a slug-scoped feedback list', async () => {
+    const { listPublicPostsWithVotesAndAvatars } = await import('../post.public')
+
+    await listPublicPostsWithVotesAndAvatars({ boardSlug: 'bug-reports' })
+
+    expect(mockEq).toHaveBeenCalledWith(mockBoards.slug, 'bug-reports')
+    expect(whereKindText()).toContain("<> 'reports'")
+  })
+
+  it('lists only reports when boardKind is reports, even with a slug', async () => {
+    const { listPublicPostsWithVotesAndAvatars } = await import('../post.public')
+
+    await listPublicPostsWithVotesAndAvatars({ boardSlug: 'bug-reports', boardKind: 'reports' })
+
+    const text = whereKindText()
+    expect(text).toContain("= 'reports'")
+    expect(text).not.toContain("<> 'reports'")
+  })
+})
+
 describe('listPublicPostsWithVotesAndAvatars — default status filtering', () => {
   beforeEach(() => {
     vi.clearAllMocks()
