@@ -108,9 +108,11 @@ vi.mock('@/lib/server/domains/settings/settings.service', () => ({
   getPortalConfig: vi.fn().mockResolvedValue({}),
 }))
 const mockCanVotePost = vi.fn(() => ({ allowed: true }) as { allowed: boolean; reason?: string })
+const mockBoardKindCondition = vi.fn(() => 'BOARD_KIND_SQL')
 vi.mock('@/lib/server/policy', () => ({
   canViewBoard: vi.fn(),
   postViewFilter: vi.fn(() => 'POST_VIEW_FILTER_SQL'),
+  boardKindCondition: (...a: unknown[]) => mockBoardKindCondition(...a),
   canVotePost: (...a: unknown[]) => mockCanVotePost(...(a as [])),
 }))
 vi.mock('@/lib/server/domains/posts/post.service', () => ({ createPost: vi.fn() }))
@@ -530,6 +532,17 @@ describe('findSimilarPostsFn — portal-visibility gate', () => {
     // generateEmbedding returns null in this mock, so only the FTS chain
     // runs end-to-end here.)
     expect(mockInnerJoin).toHaveBeenCalled()
+  })
+
+  it('restricts suggestions to feedback boards so reports never surface', async () => {
+    mockResolvePortalAccess.mockResolvedValue({ granted: true, reason: 'public' })
+    mockBoardKindCondition.mockClear()
+
+    await publicPostsHandlers[FIND_SIMILAR_POSTS]({
+      data: { title: 'something', limit: 5 },
+    })
+
+    expect(mockBoardKindCondition).toHaveBeenCalledWith('feedback')
   })
 })
 
