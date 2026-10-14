@@ -285,7 +285,7 @@ export function PostContentSection({
         className="prose prose-sm prose-neutral dark:prose-invert max-w-none text-foreground/90"
       />
 
-      {!isEditing && (
+      {!isEditing && post.boardKind !== 'reports' && (
         <SimilarPostsSection postTitle={post.title} currentPostId={post.id as PostId} />
       )}
     </div>

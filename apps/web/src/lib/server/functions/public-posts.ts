@@ -879,7 +879,7 @@ export const findSimilarPostsFn = createServerFn({ method: 'GET' })
         await import('@/lib/server/db')
       const { generateEmbedding } =
         await import('@/lib/server/domains/embeddings/embedding.service')
-      const { postViewFilter } = await import('@/lib/server/policy')
+      const { postViewFilter, boardKindCondition } = await import('@/lib/server/policy')
 
       // Resolve the actor so the audience + moderation filter applies the
       // caller's view rules. Without this, the search returned matches
@@ -916,6 +916,8 @@ export const findSimilarPostsFn = createServerFn({ method: 'GET' })
             isNull(posts.canonicalPostId),
             isNull(boards.deletedAt),
             visibilityFilter,
+            // Report posts never surface as duplicate suggestions.
+            boardKindCondition('feedback'),
             sql`${posts.searchVector} @@ plainto_tsquery('english', ${searchQuery})`
           )
         )
@@ -949,6 +951,7 @@ export const findSimilarPostsFn = createServerFn({ method: 'GET' })
                 isNull(posts.canonicalPostId),
                 isNull(boards.deletedAt),
                 visibilityFilter,
+                boardKindCondition('feedback'),
                 sql`${posts.embedding} IS NOT NULL`,
                 sql`1 - (${posts.embedding} <=> ${vectorStr}::vector) >= 0.35`
               )

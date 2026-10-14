@@ -108,8 +108,11 @@ export const Route = createFileRoute('/_portal/b/$slug/posts/$postId')({
       throw notFound()
     }
 
-    // Prefetch similar posts now that we have the title (non-blocking)
-    queryClient.prefetchQuery(similarPostsQuery(post.title))
+    // Prefetch similar posts now that we have the title (non-blocking).
+    // Report posts show no similar-posts section.
+    if (post.boardKind !== 'reports') {
+      queryClient.prefetchQuery(similarPostsQuery(post.title))
+    }
 
     return {
       settings,
