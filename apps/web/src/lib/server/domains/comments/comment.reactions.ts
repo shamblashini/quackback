@@ -4,7 +4,18 @@
  * Handles adding and removing emoji reactions on comments.
  */
 
-import { db, eq, and, postCommentReactions, principal } from '@/lib/server/db'
+import {
+  db,
+  eq,
+  and,
+  postCommentReactions,
+  postComments,
+  posts,
+  boards,
+  principal,
+} from '@/lib/server/db'
+import { ForbiddenError } from '@/lib/shared/errors'
+import { isReportBoard } from '@/lib/shared/db-types'
 import { type PostCommentId, type PrincipalId } from '@quackback/ids'
 import { aggregateReactions } from '@/lib/shared'
 import { type Actor } from '@/lib/server/policy'
@@ -14,6 +25,26 @@ import { logger } from '@/lib/server/logger'
 import { notTestPrincipal } from '@/lib/server/test-data'
 
 const log = logger.child({ component: 'comment-reactions' })
+
+export const REPORT_REACTIONS_DENIED = 'Report comments do not take reactions'
+
+/**
+ * Report threads carry no public-opinion signal, so nobody reacts to them,
+ * team included. Runs after assertCommentViewable, so the comment is known to
+ * exist and be visible to the caller.
+ */
+async function assertBoardTakesReactions(commentId: PostCommentId): Promise<void> {
+  const [row] = await db
+    .select({ access: boards.access })
+    .from(postComments)
+    .innerJoin(posts, eq(postComments.postId, posts.id))
+    .innerJoin(boards, eq(posts.boardId, boards.id))
+    .where(eq(postComments.id, commentId))
+    .limit(1)
+  if (row && isReportBoard({ access: row.access })) {
+    throw new ForbiddenError('REACTION_NOT_ALLOWED', REPORT_REACTIONS_DENIED)
+  }
+}
 
 /** Load a comment's reactions aggregated with the reactors' display names (for
  *  the hover tooltip) and the viewer's hasReacted flag. */
@@ -62,6 +93,7 @@ export async function addReaction(
   // any of the deletedAt columns — so a reaction could be added to a
   // soft-deleted comment / post / board.
   await assertCommentViewable(commentId, actor)
+  await assertBoardTakesReactions(commentId)
 
   // Atomically insert reaction (uses unique constraint to prevent duplicates)
   const inserted = await db

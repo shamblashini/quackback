@@ -47,11 +47,14 @@ import { recordAuditEvent } from '@/lib/server/audit/log'
 import { isTeamMember as roleIsTeamMember } from '@/lib/shared/roles'
 import { prepareCommentContent } from './comment-content'
 import { contentHoldReason } from '@/lib/server/content/content-holds'
-import type { TiptapContent } from '@/lib/shared/db-types'
+import { isReportBoard, type TiptapContent } from '@/lib/shared/db-types'
 import type { CommentPermissionCheckResult } from './comment.types'
 import { logger } from '@/lib/server/logger'
 
 const log = logger.child({ component: 'comment-permissions' })
+
+export const REPORT_COMMENT_DELETE_DENIED =
+  'Reports stay public for transparency, so their replies cannot be deleted'
 
 // ============================================================================
 // Helper Functions (Internal)
@@ -147,6 +150,7 @@ export async function canDeleteComment(
   // Get the comment
   const comment = await db.query.postComments.findFirst({
     where: eq(postComments.id, commentId),
+    with: { post: { columns: { id: true }, with: { board: { columns: { access: true } } } } },
   })
 
   if (!comment) {
@@ -166,6 +170,12 @@ export async function canDeleteComment(
   // Must be the author
   if (comment.principalId !== actor.principalId) {
     return { allowed: false, reason: 'You can only delete your own comments' }
+  }
+
+  // A report thread is a public record: its participants cannot erase their
+  // replies. Edits stay allowed because the edit history keeps what was said.
+  if (isReportBoard(comment.post?.board)) {
+    return { allowed: false, reason: REPORT_COMMENT_DELETE_DENIED }
   }
 
   // Check if any team member has replied to this comment
