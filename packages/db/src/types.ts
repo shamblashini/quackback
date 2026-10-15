@@ -97,6 +97,9 @@ export const BOARD_CUSTOM_FIELD_TYPES = [
   'select',
   'date',
   'checkbox',
+  'datetime',
+  'url',
+  'id_list',
 ] as const
 export type BoardCustomFieldType = (typeof BOARD_CUSTOM_FIELD_TYPES)[number]
 
@@ -111,6 +114,21 @@ export interface BoardCustomField {
   type: BoardCustomFieldType
   required: boolean
   options?: string[]
+  /** Guidance shown under the label; plain text, line breaks kept. */
+  helpText?: string
+  /** Placeholder for text-like inputs. */
+  placeholder?: string
+  /** text / long_text only: the answer must match `regex` (JS RegExp source,
+   *  no flags); `message` is shown when it does not. */
+  pattern?: { regex: string; message: string }
+  /** url only: soft warning when the link's host is not one of these domains
+   *  (subdomains match). Never blocks submission. */
+  warnDomains?: string[]
+  /** datetime only: soft warning when the moment is older than this many
+   *  hours. Never blocks submission. */
+  warnOlderThanHours?: number
+  /** Text of the soft warning (for warnDomains / warnOlderThanHours). */
+  warnMessage?: string
 }
 
 /** Validated custom-field answers as stored on a post row. Every field type

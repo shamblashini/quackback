@@ -5,8 +5,13 @@ import {
   MODERATION_RULE_VALUES,
   REPLY_POLICIES,
   BOARD_KINDS,
+  BOARD_CUSTOM_FIELD_TYPES,
   type BoardAccess,
 } from '@/lib/shared/db-types'
+import {
+  compilePostCustomFieldPattern,
+  POST_CUSTOM_FIELD_PATTERN_MAX_LENGTH,
+} from '@/lib/shared/post-custom-fields'
 
 /**
  * Create-board preset. Maps to a BoardAccess matrix on the server:
@@ -143,10 +148,86 @@ export const createBoardSchema = z.object({
 /** Longest rules text a report board can carry. */
 export const BOARD_RULES_MAX_LENGTH = 10000
 
+export const BOARD_CUSTOM_FIELDS_MAX = 20
+export const BOARD_CUSTOM_FIELD_OPTIONS_MAX = 50
+
+const trimmedOptional = (max: number) =>
+  z
+    .string()
+    .max(max)
+    .optional()
+    .transform((v) => (v === undefined || v.trim() === '' ? undefined : v))
+
+/**
+ * One configurable board intake field (see `BoardCustomField`). Strict so
+ * unknown keys are rejected; empty optional strings are dropped.
+ */
+export const boardCustomFieldSchema = z
+  .object({
+    key: z
+      .string()
+      .min(1)
+      .max(64)
+      .regex(/^[a-z0-9_]+$/, 'Use lowercase letters, numbers and underscores'),
+    label: z.string().trim().min(1, 'Label is required').max(120),
+    type: z.enum(BOARD_CUSTOM_FIELD_TYPES),
+    required: z.boolean(),
+    options: z
+      .array(z.string().trim().min(1).max(120))
+      .max(BOARD_CUSTOM_FIELD_OPTIONS_MAX)
+      .optional(),
+    helpText: trimmedOptional(1000),
+    placeholder: trimmedOptional(200),
+    pattern: z
+      .object({
+        regex: z.string().min(1).max(POST_CUSTOM_FIELD_PATTERN_MAX_LENGTH),
+        message: z.string().trim().min(1).max(300),
+      })
+      .strict()
+      .optional(),
+    warnDomains: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
+    warnOlderThanHours: z.number().int().positive().max(87_600).optional(),
+    warnMessage: trimmedOptional(300),
+  })
+  .strict()
+  .superRefine((field, ctx) => {
+    if (field.type === 'select' && !(field.options?.length ?? 0)) {
+      ctx.addIssue({ code: 'custom', path: ['options'], message: 'Add at least one option' })
+    }
+    if (field.pattern) {
+      if (field.type !== 'text' && field.type !== 'long_text') {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['pattern'],
+          message: 'A pattern only applies to text fields',
+        })
+      } else if (!compilePostCustomFieldPattern(field.pattern.regex)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['pattern', 'regex'],
+          message: 'Not a valid regular expression',
+        })
+      }
+    }
+  })
+
 /** Team-editable board settings. Strict so unknown keys are rejected. */
 export const boardSettingsSchema = z
   .object({
     roadmapStatusIds: z.array(z.string()).optional(),
+    customFields: z
+      .array(boardCustomFieldSchema)
+      .max(BOARD_CUSTOM_FIELDS_MAX)
+      .superRefine((fields, ctx) => {
+        const seen = new Set<string>()
+        fields.forEach((f, i) => {
+          if (seen.has(f.key)) {
+            ctx.addIssue({ code: 'custom', path: [i, 'key'], message: 'Duplicate field key' })
+          }
+          seen.add(f.key)
+        })
+      })
+      .optional(),
     rulesMarkdown: z.string().max(BOARD_RULES_MAX_LENGTH).optional(),
   })
   .strict()

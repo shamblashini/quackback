@@ -51,6 +51,7 @@ export {
   INTERACTIVE_BLOCK_KINDS,
   CSAT_FACES,
   DEFAULT_SETUP_STATE,
+  BOARD_CUSTOM_FIELD_TYPES,
 } from '@quackback/db/types'
 export type {
   AccessTier,
