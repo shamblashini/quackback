@@ -74,8 +74,11 @@ export function ReportGuide({
       <ReportNotice markdown={guide.notice} />
 
       {rules && (
+        // On wide screens the page's Rules sidebar already shows this type's
+        // rules next to the form; inline they would appear twice.
         <ReportRulesCollapsible
           defaultOpen
+          className="lg:hidden"
           sections={[{ id: guide.boardId, name: guide.boardName, markdown: rules }]}
         />
       )}
