@@ -4,8 +4,7 @@
  */
 
 import type { EventData } from '@/lib/server/events/types'
-import { stripHtml, truncate, formatStatus, getStatusEmoji } from '@/lib/server/events/hook-utils'
-import { stripMarkdownPreview } from '@/lib/shared/utils/string'
+import { truncate, formatStatus, getStatusEmoji } from '@/lib/server/events/hook-utils'
 import { commentPlainText } from '@/lib/server/markdown-tiptap'
 import { getAuthorName, buildPostUrl } from '@/lib/server/integrations/message-utils'
 
@@ -21,9 +20,18 @@ interface DiscordEmbed {
   timestamp?: string
 }
 
+/** A link button: Discord shows it below the message's embeds. */
+interface DiscordLinkButton {
+  type: 2
+  style: 5
+  label: string
+  url: string
+}
+
 interface DiscordMessage {
   content?: string
   embeds?: DiscordEmbed[]
+  components?: Array<{ type: 1; components: DiscordLinkButton[] }>
   allowed_mentions?: { parse: Array<'users' | 'roles' | 'everyone'> }
 }
 
@@ -34,6 +42,8 @@ const COLORS = {
   yellow: 0xfee75c,
   orange: 0xf0b232,
   grey: 0x99aab5,
+  /** Changelog announcements: the portal's warm orange. */
+  changelog: 0xe7a33d,
 } as const
 
 function getStatusColor(status: string): number {
@@ -46,14 +56,6 @@ function getStatusColor(status: string): number {
     closed: COLORS.grey,
   }
   return map[status.toLowerCase().replace(/\s+/g, '_')] ?? COLORS.blue
-}
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host
-  } catch {
-    return url
-  }
 }
 
 /**
@@ -180,23 +182,24 @@ export function buildDiscordMessage(event: EventData, rootUrl: string): DiscordM
     case 'changelog.published': {
       const { changelog } = event.data
       const entryUrl = `${rootUrl}/changelog/${changelog.id}`
-      // Headings are dropped: joined into one line they would run straight
-      // into the first sentence ("Dark mode Switch the portal...").
-      const body = stripHtml((changelog.contentPreview || '').replace(/^#{1,6}[ \t].*$/gm, ''))
-      const excerpt = stripMarkdownPreview(body, 200)
-      const readMore = `**[Read the full update →](${entryUrl})**`
 
+      // Header, linked title and featured image only: the entry is read on
+      // the portal. Discord always draws an embed's image after its text, so
+      // the read link is a button, which sits below the whole embed.
       return {
         embeds: [
           {
-            author: { name: '📢 New changelog entry' },
+            author: { name: 'Changelog 📢' },
             title: truncate(changelog.title, 256),
             url: entryUrl,
-            description: excerpt ? `${excerpt}\n\n${readMore}` : readMore,
             ...(changelog.featuredImageUrl && { image: { url: changelog.featuredImageUrl } }),
-            color: COLORS.green,
-            footer: { text: `${hostOf(rootUrl)} changelog` },
-            timestamp: changelog.publishedAt,
+            color: COLORS.changelog,
+          },
+        ],
+        components: [
+          {
+            type: 1,
+            components: [{ type: 2, style: 5, label: 'Read the full update', url: entryUrl }],
           },
         ],
         // The entry is admin-written text: never let it ping @everyone or roles.

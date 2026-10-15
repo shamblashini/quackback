@@ -37,42 +37,30 @@ describe('buildDiscordMessage — changelog.published', () => {
     expect(embed).toMatchObject({ title: 'Dark mode is here', url: ENTRY_URL })
   })
 
-  it('shows a plain-text excerpt and a read-more link to the entry', () => {
-    const description = buildDiscordMessage(changelogPublishedEvent(), ROOT_URL).embeds?.[0]
-      ?.description
+  it('shows a Changelog header and no body, footer or time', () => {
+    const embed = buildDiscordMessage(changelogPublishedEvent(), ROOT_URL).embeds?.[0]
 
-    expect(description).toMatch(/^Switch the portal to a dark theme from your profile\./)
-    expect(description).not.toContain('**portal**')
-    expect(description).toContain(`[Read the full update →](${ENTRY_URL})`)
+    expect(embed?.author).toEqual({ name: 'Changelog 📢' })
+    expect(embed).not.toHaveProperty('description')
+    expect(embed).not.toHaveProperty('footer')
+    expect(embed).not.toHaveProperty('timestamp')
   })
 
-  it('leaves headings out of the excerpt', () => {
-    const description = buildDiscordMessage(changelogPublishedEvent(), ROOT_URL).embeds?.[0]
-      ?.description
+  it('puts the read link in a button below the embed', () => {
+    const message = buildDiscordMessage(changelogPublishedEvent(), ROOT_URL)
 
-    expect(description).not.toContain('Dark mode')
-    expect(description).not.toContain('#')
+    expect(message.components).toEqual([
+      {
+        type: 1,
+        components: [{ type: 2, style: 5, label: 'Read the full update', url: ENTRY_URL }],
+      },
+    ])
   })
 
-  it('caps the excerpt at 200 characters', () => {
-    const long = 'word '.repeat(100)
-    const description = buildDiscordMessage(
-      changelogPublishedEvent({ contentPreview: long }),
-      ROOT_URL
-    ).embeds?.[0]?.description
-    const excerpt = description?.split('\n\n')[0] ?? ''
+  it('uses the warm orange accent', () => {
+    const embed = buildDiscordMessage(changelogPublishedEvent(), ROOT_URL).embeds?.[0]
 
-    expect(excerpt.length).toBeLessThanOrEqual(203)
-    expect(excerpt.endsWith('...')).toBe(true)
-  })
-
-  it('posts only the read-more link when the entry has no text', () => {
-    const description = buildDiscordMessage(
-      changelogPublishedEvent({ contentPreview: '' }),
-      ROOT_URL
-    ).embeds?.[0]?.description
-
-    expect(description).toBe(`**[Read the full update →](${ENTRY_URL})**`)
+    expect(embed?.color).toBe(0xe7a33d)
   })
 
   it('shows the featured image when the entry has one', () => {
@@ -95,12 +83,6 @@ describe('buildDiscordMessage — changelog.published', () => {
     delete (event.data as { changelog: Record<string, unknown> }).changelog.featuredImageUrl
 
     expect(buildDiscordMessage(event, ROOT_URL).embeds?.[0]).not.toHaveProperty('image')
-  })
-
-  it('names the portal in the footer', () => {
-    const embed = buildDiscordMessage(changelogPublishedEvent(), ROOT_URL).embeds?.[0]
-
-    expect(embed?.footer).toEqual({ text: 'feedback.example.com changelog' })
   })
 
   it('never lets the entry ping @everyone, roles or users', () => {
