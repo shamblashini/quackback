@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useLoaderData } from '@tanstack/react-router'
 import { useIntl, FormattedMessage } from 'react-intl'
 import { Cog6ToothIcon } from '@heroicons/react/24/solid'
 import { PortalPageHeader } from '@/components/public/portal-page-header'
@@ -26,6 +26,11 @@ export const Route = createFileRoute('/_portal/settings/preferences')({
 function PreferencesPage() {
   const intl = useIntl()
   const { notificationPreferences, messages } = Route.useLoaderData()
+  // The theme picker only makes sense when the workspace lets readers choose;
+  // a portal forced to light or dark (Branding settings) hides it, as the
+  // header's theme toggle already does.
+  const { themeMode } = useLoaderData({ from: '/_portal' })
+  const canPickTheme = themeMode === 'user'
 
   return (
     <div className="space-y-6">
@@ -43,32 +48,34 @@ function PreferencesPage() {
       />
 
       {/* Appearance */}
-      <div
-        className="rounded-xl border border-border/50 bg-card p-6 shadow-sm animate-in fade-in duration-200 fill-mode-backwards"
-        style={{ animationDelay: '75ms' }}
-      >
-        <h2 className="font-medium mb-1">
-          <FormattedMessage
-            id="portal.settings.preferences.appearance.title"
-            defaultMessage="Appearance"
-          />
-        </h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          <FormattedMessage
-            id="portal.settings.preferences.appearance.description"
-            defaultMessage="Customize how the app looks"
-          />
-        </p>
-        <div className="space-y-3">
-          <p className="text-sm font-medium">
+      {canPickTheme && (
+        <div
+          className="rounded-xl border border-border/50 bg-card p-6 shadow-sm animate-in fade-in duration-200 fill-mode-backwards"
+          style={{ animationDelay: '75ms' }}
+        >
+          <h2 className="font-medium mb-1">
             <FormattedMessage
-              id="portal.settings.preferences.appearance.themeLabel"
-              defaultMessage="Theme"
+              id="portal.settings.preferences.appearance.title"
+              defaultMessage="Appearance"
+            />
+          </h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            <FormattedMessage
+              id="portal.settings.preferences.appearance.description"
+              defaultMessage="Customize how the app looks"
             />
           </p>
-          <ThemeSwitcher />
+          <div className="space-y-3">
+            <p className="text-sm font-medium">
+              <FormattedMessage
+                id="portal.settings.preferences.appearance.themeLabel"
+                defaultMessage="Theme"
+              />
+            </p>
+            <ThemeSwitcher />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Notifications */}
       <div
