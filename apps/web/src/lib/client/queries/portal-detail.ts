@@ -59,6 +59,8 @@ export interface PublicPostDetailView {
   authorName: string | null
   principalId: PrincipalId | null
   authorAvatarUrl: string | null
+  /** Author's Discord user id. Team-only: the server omits it for other viewers. */
+  authorDiscordId?: string
   createdAt: Date | string
   /** Target ship date (time-based roadmap); null when unset. */
   eta?: Date | string | null

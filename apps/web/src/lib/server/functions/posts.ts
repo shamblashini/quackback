@@ -45,6 +45,7 @@ import {
   loadAdminPostPanels,
   loadPostVotersPanel,
 } from '@/lib/server/domains/posts/post.admin-panels'
+import { getDiscordAccountIdForPrincipal } from '@/lib/server/domains/users/user.discord'
 import { toIsoString, toIsoStringOrNull } from '@/lib/shared/utils'
 import { logger } from '@/lib/server/logger'
 
@@ -344,8 +345,15 @@ export const fetchPostWithDetails = createServerFn({ method: 'GET' })
         )
       : null
 
+    // Team-only (this handler requires POST_VIEW_PRIVATE): lets moderators
+    // match the author to their Discord account.
+    const authorDiscordId = result.principalId
+      ? await getDiscordAccountIdForPrincipal(result.principalId as PrincipalId)
+      : null
+
     return {
       ...serializePostDates(result),
+      authorDiscordId,
       summaryUpdatedAt: toIsoStringOrNull(result.summaryUpdatedAt),
       hasVoted: voted,
       comments: comments.map(serializeComment),

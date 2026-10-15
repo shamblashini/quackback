@@ -571,6 +571,7 @@ export const PostModalContent = memo(function PostModalContent({
               authorName={post.authorName}
               authorAvatarUrl={(post.principalId && post.avatarUrls?.[post.principalId]) || null}
               authorPrincipalId={post.principalId}
+              authorDiscordId={post.authorDiscordId}
               createdAt={new Date(post.createdAt)}
               eta={post.eta ?? null}
               tags={post.tags}

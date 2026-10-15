@@ -394,6 +394,7 @@ function PostDetailPage() {
                 board={board}
                 authorName={post.authorName}
                 authorAvatarUrl={post.authorAvatarUrl}
+                authorDiscordId={post.authorDiscordId}
                 createdAt={new Date(post.createdAt)}
                 eta={post.eta ?? null}
                 tags={post.tags}

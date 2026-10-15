@@ -51,7 +51,15 @@ function held<T>(name: string, value: T) {
     return new Promise<T>((resolve) => releases.set(name, () => resolve(value)))
   }
 }
-const post = { canonicalPostId: null as PostId | null }
+const post = {
+  canonicalPostId: null as PostId | null,
+  principalId: undefined as string | undefined,
+}
+const getDiscordAccountIdForPrincipal = vi.fn(async () => '123456789012345678' as string | null)
+vi.mock('@/lib/server/domains/users/user.discord', () => ({
+  getDiscordAccountIdForPrincipal: (...args: unknown[]) =>
+    getDiscordAccountIdForPrincipal(...(args as [])),
+}))
 vi.mock('@/lib/server/domains/posts/post.query', () => ({
   getPostWithDetails: () =>
     held('post', {
@@ -100,6 +108,8 @@ beforeEach(() => {
   policyActorFromAuth.mockClear()
   getPostMergeInfo.mockClear()
   post.canonicalPostId = null
+  post.principalId = undefined
+  getDiscordAccountIdForPrincipal.mockClear()
 })
 
 describe('fetchPostWithDetails', () => {
@@ -125,5 +135,27 @@ describe('fetchPostWithDetails', () => {
 
     expect(policyActorFromAuth).toHaveBeenCalledWith(auth)
     expect(getPostMergeInfo).toHaveBeenCalledWith('post_1', { principalId: 'principal_admin' })
+  })
+
+  it('includes the author Discord id for moderators', async () => {
+    post.principalId = 'principal_author'
+
+    const result = (await settle(fetchPostWithDetails({ data: { id: 'post_1' } }))) as {
+      authorDiscordId: string | null
+    }
+
+    expect(getDiscordAccountIdForPrincipal).toHaveBeenCalledWith('principal_author')
+    expect(result.authorDiscordId).toBe('123456789012345678')
+  })
+
+  it('returns null when the author has no Discord account', async () => {
+    post.principalId = 'principal_author'
+    getDiscordAccountIdForPrincipal.mockResolvedValueOnce(null)
+
+    const result = (await settle(fetchPostWithDetails({ data: { id: 'post_1' } }))) as {
+      authorDiscordId: string | null
+    }
+
+    expect(result.authorDiscordId).toBeNull()
   })
 })

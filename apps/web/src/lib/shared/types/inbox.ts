@@ -46,6 +46,8 @@ export interface PostDetails {
   // Author info resolved from member->user relation
   authorName: string | null
   authorEmail: string | null
+  /** Author's Discord user id (admin endpoints only); null when no Discord account is linked. */
+  authorDiscordId?: string | null
   createdAt: Date
   /** Target ship date (time-based roadmap); null when unset. */
   eta?: Date | string | null

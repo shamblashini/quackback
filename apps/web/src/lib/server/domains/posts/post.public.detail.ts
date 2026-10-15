@@ -32,6 +32,7 @@ import type { TiptapContent } from '@/lib/shared/db-types'
 import type { JSONContent } from '@tiptap/core'
 import { contentJsonForClient } from '@/lib/server/content/storage-read-urls'
 import { notTestPrincipal } from '@/lib/server/test-data'
+import { resolveAuthorDiscordIdForActor } from '@/lib/server/domains/users/user.discord'
 
 /**
  * Fetch the public-facing detail view for a post.
@@ -517,6 +518,11 @@ export async function getPublicPostDetail(
       : postResult.contentJson
   )
 
+  // Team-only: the author's Discord id (moderators match report authors to
+  // their Discord account). Resolved only for team actors and the key is
+  // omitted entirely otherwise, so it never reaches anonymous/regular viewers.
+  const authorDiscordId = await resolveAuthorDiscordIdForActor(actor, postResult.principalId)
+
   return {
     id: postResult.id,
     title: postResult.title,
@@ -527,6 +533,7 @@ export async function getPublicPostDetail(
     authorName: postResult.authorName,
     principalId: postResult.principalId,
     authorAvatarUrl,
+    ...(authorDiscordId ? { authorDiscordId } : {}),
     createdAt: postResult.createdAt,
     eta: postResult.eta,
     board: { id: postResult.boardId, name: postResult.boardName, slug: postResult.boardSlug },

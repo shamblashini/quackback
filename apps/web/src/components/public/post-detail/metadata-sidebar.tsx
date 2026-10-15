@@ -29,6 +29,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AuthVoteButton } from '@/components/public/auth-vote-button'
+import { DiscordAccountChip } from '@/components/shared/discord-account-chip'
 import { AuthorHoverCard } from '@/components/public/author-hover-card'
 import { AdminAuthorHoverCard } from '@/components/admin/admin-author-hover-card'
 import { AuthSubscriptionBell } from '@/components/public/auth-subscription-bell'
@@ -286,6 +287,8 @@ interface MetadataSidebarProps {
   authorAvatarUrl?: string | null
   /** Principal ID of the author (used to link to admin user detail) */
   authorPrincipalId?: string | null
+  /** Author's Discord user id. Team-only: pass only for team viewers (server omits it otherwise). */
+  authorDiscordId?: string | null
   createdAt: Date
   /** Target ship date (time-based roadmap); rendered as a "Mar 2027" chip. */
   eta?: Date | string | null
@@ -358,6 +361,7 @@ export function MetadataSidebar({
   authorName,
   authorAvatarUrl,
   authorPrincipalId,
+  authorDiscordId,
   createdAt,
   eta,
   tags = [],
@@ -957,6 +961,9 @@ export function MetadataSidebar({
             })()
           )}
         </div>
+
+        {/* Team-only: author's Discord account (moderation aid) */}
+        {authorDiscordId && <DiscordAccountChip discordId={authorDiscordId} />}
 
         {/* Subscribe section - hidden in admin mode */}
         {!hideSubscribe && (
