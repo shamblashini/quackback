@@ -41,11 +41,6 @@ import { usePortalPermissions } from '@/lib/client/hooks/use-portal-permissions'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import { useApprovePost, useRejectPost } from '@/lib/client/mutations/moderation'
 import { useSessionContext } from '@/lib/client/hooks/use-root-context'
-import {
-  ReportRulesCard,
-  ReportRulesCollapsible,
-  type ReportRulesSection,
-} from '@/components/public/reports/report-rules'
 
 // Dialogs the post's author or the team open from its menu; they load on first use.
 const DeletePostDialog = lazy(() =>
@@ -317,11 +312,6 @@ function PostDetailPage() {
     return () => clearTimeout(timeoutId)
   }, [post.comments])
 
-  const rulesText = post.boardKind === 'reports' ? post.boardRulesMarkdown?.trim() : undefined
-  const rules: ReportRulesSection[] = rulesText
-    ? [{ id: board.id, name: board.name, markdown: rulesText }]
-    : []
-
   return (
     <div data-testid="post-detail" className="mx-auto max-w-6xl w-full px-4 sm:px-6 py-6">
       <UnsubscribeBanner postId={post.id as PostId} />
@@ -376,60 +366,42 @@ function PostDetailPage() {
             onReject={() => rejectPost.mutate({ postId })}
           />
 
-          {/* Report boards with rules: the rules sit under the metadata in the
-              same right-hand column. */}
-          <div
-            className={
-              rules.length > 0
-                ? 'hidden lg:flex lg:flex-col w-72 shrink-0 [&>aside]:flex-1'
-                : 'contents'
-            }
-          >
-            <Suspense fallback={<MetadataSidebarSkeleton />}>
-              <MetadataSidebar
-                postId={postId}
-                voteCount={post.voteCount}
-                hideVote={post.boardKind === 'reports'}
-                status={currentStatus}
-                board={board}
-                authorName={post.authorName}
-                authorAvatarUrl={post.authorAvatarUrl}
-                authorDiscordId={post.authorDiscordId}
-                createdAt={new Date(post.createdAt)}
-                eta={post.eta ?? null}
-                tags={post.tags}
-                allStatuses={
-                  team.canSetStatus ? (statusesQuery.data as unknown as PostStatusEntity[]) : []
-                }
-                onStatusChange={team.onStatusChange}
-                onEtaChange={team.onEtaChange}
-                allTags={team.allTags}
-                onTagsChange={team.onTagsChange}
-                allBoards={team.allBoards}
-                onBoardChange={team.onBoardChange}
-                owner={team.owner}
-                ownerCandidates={team.ownerCandidates}
-                onOwnerChange={team.onOwnerChange}
-                isUpdating={team.isMetaUpdating}
-                showVoters={team.canVoteOnBehalf && post.boardKind !== 'reports'}
-                votersQuery={team.votersQuery}
-                votersCanAddVoter={team.canSearchPeople}
-                votersCanCreateUser={team.canCreatePeople}
-                onVotersInvalidate={team.invalidateVoters}
-                manageActions={manageActions}
-              />
-            </Suspense>
-            {rules.length > 0 && (
-              <div className="border-s border-t border-border/30 bg-muted/5 p-4">
-                <ReportRulesCard sections={rules} />
-              </div>
-            )}
-          </div>
+          <Suspense fallback={<MetadataSidebarSkeleton />}>
+            <MetadataSidebar
+              postId={postId}
+              voteCount={post.voteCount}
+              hideVote={post.boardKind === 'reports'}
+              status={currentStatus}
+              board={board}
+              authorName={post.authorName}
+              authorAvatarUrl={post.authorAvatarUrl}
+              authorDiscordId={post.authorDiscordId}
+              createdAt={new Date(post.createdAt)}
+              eta={post.eta ?? null}
+              tags={post.tags}
+              allStatuses={
+                team.canSetStatus ? (statusesQuery.data as unknown as PostStatusEntity[]) : []
+              }
+              onStatusChange={team.onStatusChange}
+              onEtaChange={team.onEtaChange}
+              allTags={team.allTags}
+              onTagsChange={team.onTagsChange}
+              allBoards={team.allBoards}
+              onBoardChange={team.onBoardChange}
+              owner={team.owner}
+              ownerCandidates={team.ownerCandidates}
+              onOwnerChange={team.onOwnerChange}
+              isUpdating={team.isMetaUpdating}
+              showVoters={team.canVoteOnBehalf && post.boardKind !== 'reports'}
+              votersQuery={team.votersQuery}
+              votersCanAddVoter={team.canSearchPeople}
+              votersCanCreateUser={team.canCreatePeople}
+              onVotersInvalidate={team.invalidateVoters}
+              manageActions={manageActions}
+            />
+          </Suspense>
         </div>
       </div>
-
-      {/* Small screens hide the sidebar, so the rules fold in above the thread. */}
-      <ReportRulesCollapsible sections={rules} className="mt-4 lg:hidden" />
 
       {/* Comments card */}
       <div className="bg-card border border-border/40 rounded-lg overflow-hidden mt-4">

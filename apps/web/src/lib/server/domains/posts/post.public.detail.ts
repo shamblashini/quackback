@@ -541,8 +541,6 @@ export async function getPublicPostDetail(
     // Server-only: fetchPublicPostDetail derives canVote/canComment from this
     // and strips it before the response reaches the client.
     boardAccess: postResult.boardAccess,
-    // Public: a report board's rules text, shown beside its reports.
-    boardRulesMarkdown: postResult.boardSettings?.rulesMarkdown?.trim() || null,
     // The submitter's answers to the board's intake fields, with the field
     // definitions to label them. Follows the post's own visibility.
     customFieldValues: postResult.customFieldValues ?? null,

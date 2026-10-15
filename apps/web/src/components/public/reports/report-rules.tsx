@@ -71,7 +71,7 @@ export function ReportRulesCard({
       data-testid="report-rules"
       className={cn(
         'rounded-lg border bg-card p-4',
-        sticky && 'lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto',
+        sticky && 'lg:sticky lg:top-4 lg:max-h-[calc(100dvh-10rem)] lg:overflow-y-auto',
         className
       )}
     >

@@ -109,8 +109,6 @@ export interface PublicPostDetailView {
   /** The board's purpose. Undefined on legacy/cached payloads — treat as
    *  `'feedback'`. A `'reports'` board's posts link back to /reports. */
   boardKind?: BoardKind
-  /** The board's rules text (Markdown); set on report boards only. */
-  boardRulesMarkdown?: string | null
   /** The submitter's answers to the board's intake fields (null / absent when none). */
   customFieldValues?: CustomFieldValues | null
   /** The board's field definitions, in display order (labels for the answers). */

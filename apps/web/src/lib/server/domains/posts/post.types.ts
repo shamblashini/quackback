@@ -294,8 +294,6 @@ export interface PublicPostDetail {
    * strips it before serializing to the client (segment ids must not leak).
    */
   boardAccess: BoardAccess
-  /** The board's rules text (Markdown); only report boards set it. */
-  boardRulesMarkdown: string | null
   /** Answers to the board's custom intake fields; null when none were given. */
   customFieldValues: CustomFieldValues | null
   /** The board's field definitions, in display order (labels for the answers). */
