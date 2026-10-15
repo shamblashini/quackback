@@ -82,6 +82,19 @@ describe('CommentThread on a report', () => {
     expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
   })
 
+  it('shows Edit to the author on a feedback post', () => {
+    renderThread({ isReportThread: false })
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeTruthy()
+  })
+
+  it('hides Edit on a report, for the author and the team alike', () => {
+    renderThread({ isReportThread: true })
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
+    cleanup()
+    renderThread({ isReportThread: true, isTeamMember: true })
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
+  })
+
   it('keeps Delete for the team', () => {
     renderThread({ isReportThread: true, isTeamMember: true })
     expect(screen.getByRole('button', { name: 'Delete' })).toBeTruthy()

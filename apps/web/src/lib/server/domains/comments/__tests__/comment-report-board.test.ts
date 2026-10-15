@@ -1,6 +1,6 @@
 /**
- * Report-board rules for comments: no deletes by non-team actors, no
- * reactions from anyone.
+ * Report-board rules for comments: no edits from anyone, no deletes by
+ * non-team actors, no reactions from anyone.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -79,6 +79,33 @@ describe('canDeleteComment on a report board', () => {
     mockCommentFindFirst.mockResolvedValue(comment({ kind: 'reports' }))
     const { canDeleteComment } = await import('../comment.permissions')
     expect((await canDeleteComment(COMMENT_ID, TEAM)).allowed).toBe(true)
+  })
+})
+
+describe('canEditComment on a report board', () => {
+  beforeEach(() => {
+    mockCommentFindFirst.mockReset()
+    mockHasReplyFindMany.mockReset().mockResolvedValue([])
+  })
+
+  it('refuses the reporter editing their own reply', async () => {
+    mockCommentFindFirst.mockResolvedValue(comment({ kind: 'reports' }))
+    const { canEditComment } = await import('../comment.permissions')
+    const result = await canEditComment(COMMENT_ID, REPORTER)
+    expect(result.allowed).toBe(false)
+    expect(result.reason).toMatch(/cannot be edited/i)
+  })
+
+  it('refuses the team too: a report thread stays as written', async () => {
+    mockCommentFindFirst.mockResolvedValue(comment({ kind: 'reports' }))
+    const { canEditComment } = await import('../comment.permissions')
+    expect((await canEditComment(COMMENT_ID, TEAM)).allowed).toBe(false)
+  })
+
+  it('still lets the author edit on a feedback board', async () => {
+    mockCommentFindFirst.mockResolvedValue(comment({ kind: 'feedback' }))
+    const { canEditComment } = await import('../comment.permissions')
+    expect((await canEditComment(COMMENT_ID, REPORTER)).allowed).toBe(true)
   })
 })
 

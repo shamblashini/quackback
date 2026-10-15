@@ -53,6 +53,9 @@ import { logger } from '@/lib/server/logger'
 
 const log = logger.child({ component: 'comment-permissions' })
 
+export const REPORT_COMMENT_EDIT_DENIED =
+  'Messages in a report thread cannot be edited once posted. Add a new reply instead.'
+
 export const REPORT_COMMENT_DELETE_DENIED =
   'Reports stay public for transparency, so their replies cannot be deleted'
 
@@ -101,6 +104,7 @@ export async function canEditComment(
   // Get the comment
   const comment = await db.query.postComments.findFirst({
     where: eq(postComments.id, commentId),
+    with: { post: { columns: { id: true }, with: { board: { columns: { access: true } } } } },
   })
 
   if (!comment) {
@@ -110,6 +114,13 @@ export async function canEditComment(
   // Check if comment is deleted
   if (comment.deletedAt) {
     return { allowed: false, reason: 'Cannot edit a deleted comment' }
+  }
+
+  // A report thread is a public record: once posted, a message stays as
+  // written, for everyone including the team. A correction is a new reply.
+  // Checked before the operator bypass on purpose.
+  if (isReportBoard(comment.post?.board)) {
+    return { allowed: false, reason: REPORT_COMMENT_EDIT_DENIED }
   }
 
   // Operators holding comment.edit can edit any comment.

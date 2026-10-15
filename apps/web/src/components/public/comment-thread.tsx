@@ -442,7 +442,8 @@ function CommentItem({
   // Can edit/delete: not already deleted, and user is author or team member
   // Server re-checks; client heuristic avoids showing the button to unrelated users
   const isAuthor = !!user?.principalId && comment.principalId === user.principalId
-  const canEdit = !isDeleted && (isTeamMember || isAuthor)
+  // A report thread is a public record: nobody edits a message once posted.
+  const canEdit = !isDeleted && !isReportThread && (isTeamMember || isAuthor)
   // A report thread is a public record: only the team can delete a reply.
   const canDelete =
     !isDeleted && !!onDeleteComment && (isTeamMember || (isAuthor && !isReportThread))
