@@ -72,6 +72,9 @@ services:
       # background jobs at all, and readiness then reports 503 for `worker`.
       - QUACKBACK_ROLE=${QUACKBACK_ROLE:-all}
       - LOG_LEVEL=${LOG_LEVEL:-info}
+      # The community reads Ukrainian only: every visitor gets the Ukrainian UI,
+      # whatever their browser language. Clear it to follow Accept-Language.
+      - FORCE_LOCALE=${FORCE_LOCALE:-uk}
       # Anonymous usage stats are ON unless this is set to true.
       - DISABLE_TELEMETRY=${DISABLE_TELEMETRY:-}
       # Demo content (boards, posts, demo@example.com). Leave false on a real

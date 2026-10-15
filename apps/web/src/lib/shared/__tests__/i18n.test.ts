@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import {
@@ -447,5 +447,27 @@ describe('area strings', () => {
     expect(messageArea('common.errorPage.notFound.title')).toBe('errorPage')
     expect(messageArea('portal.auth.continue')).toBeNull()
     expect(messageArea('portal.header.nav.feedback')).toBeNull()
+  })
+})
+
+describe('resolveLocale with FORCE_LOCALE', () => {
+  afterEach(() => {
+    delete process.env.FORCE_LOCALE
+  })
+
+  it('pins every request to the forced locale', () => {
+    process.env.FORCE_LOCALE = 'uk'
+    expect(resolveLocale('en-US,en;q=0.9')).toBe('uk')
+    expect(resolveLocale(null)).toBe('uk')
+    expect(resolveLocale('de', 'fr')).toBe('uk')
+  })
+
+  it('ignores an unsupported forced locale', () => {
+    process.env.FORCE_LOCALE = 'xx'
+    expect(resolveLocale('de')).toBe('de')
+  })
+
+  it('follows Accept-Language when unset', () => {
+    expect(resolveLocale('pl,en;q=0.5')).toBe('pl')
   })
 })

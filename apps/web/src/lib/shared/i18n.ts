@@ -69,14 +69,29 @@ export function normalizeLocale(locale: string): SupportedLocale | null {
 }
 
 /**
+ * A deployment can pin every visitor to one locale with the FORCE_LOCALE
+ * server env var (e.g. `uk` for a community that reads only Ukrainian). It is
+ * read on the server only; in the browser `process` is undefined and this
+ * returns null.
+ */
+export function forcedLocale(): SupportedLocale | null {
+  const raw = typeof process !== 'undefined' ? process.env?.FORCE_LOCALE : undefined
+  return raw ? normalizeLocale(raw) : null
+}
+
+/**
  * Parses an Accept-Language header and returns the best matching supported
- * locale. An explicit locale override takes precedence when supported.
- * Falls back to DEFAULT_LOCALE if nothing matches.
+ * locale. A deployment-wide FORCE_LOCALE wins over everything; otherwise an
+ * explicit locale override takes precedence when supported. Falls back to
+ * DEFAULT_LOCALE if nothing matches.
  */
 export function resolveLocale(
   acceptLanguage: string | null | undefined,
   explicitLocale?: string
 ): SupportedLocale {
+  const forced = forcedLocale()
+  if (forced) return forced
+
   // Explicit locale wins if it's supported
   if (explicitLocale) {
     const normalized = normalizeLocale(explicitLocale)
