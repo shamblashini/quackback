@@ -26,6 +26,7 @@ import { StatusBadge } from '@/components/ui/status-badge'
 import type { EditPostInput } from '@/lib/client/mutations'
 import type { PublicPostDetailView } from '@/lib/client/queries/portal-detail'
 import { SimilarPostsSection } from './similar-posts-section'
+import { CustomFieldAnswers } from './custom-field-answers'
 import { PostActionsMenu } from './post-actions-menu'
 import type { PostId } from '@quackback/ids'
 import { InlineModerationActions } from '@/components/shared/inline-moderation-actions'
@@ -278,6 +279,8 @@ export function PostContentSection({
           onReject={canModerate ? onReject : undefined}
         />
       )}
+
+      <CustomFieldAnswers fields={post.boardCustomFields} values={post.customFieldValues} />
 
       <PostContent
         content={post.content}

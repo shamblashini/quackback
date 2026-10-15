@@ -7,7 +7,13 @@ import {
 } from '@/lib/server/functions/portal'
 import { getVoteSidebarDataFn, getVotedPostsFn } from '@/lib/server/functions/public-posts'
 import type { CommentReactionCount, CommentStatusChange } from '@/lib/shared'
-import type { BoardKind, ReplyPolicy, TiptapContent } from '@/lib/shared/db-types'
+import type {
+  BoardCustomField,
+  BoardKind,
+  CustomFieldValues,
+  ReplyPolicy,
+  TiptapContent,
+} from '@/lib/shared/db-types'
 
 /**
  * Comment type for client components (Date fields may be strings after serialization)
@@ -105,6 +111,10 @@ export interface PublicPostDetailView {
   boardKind?: BoardKind
   /** The board's rules text (Markdown); set on report boards only. */
   boardRulesMarkdown?: string | null
+  /** The submitter's answers to the board's intake fields (null / absent when none). */
+  customFieldValues?: CustomFieldValues | null
+  /** The board's field definitions, in display order (labels for the answers). */
+  boardCustomFields?: BoardCustomField[]
   /** Merge/deduplication: info about canonical post if this is a merged duplicate */
   mergeInfo?: {
     canonicalPostId: string

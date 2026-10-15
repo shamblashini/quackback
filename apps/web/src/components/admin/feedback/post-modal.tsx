@@ -70,6 +70,7 @@ import { useLoadMoreAdminComments } from '@/lib/client/mutations/load-more-comme
 import { InlineModerationActions } from '@/components/shared/inline-moderation-actions'
 import { useApprovePost, useRejectPost } from '@/lib/client/mutations/moderation'
 import type { PostDetails, CurrentUser } from '@/lib/shared/types'
+import { CustomFieldAnswers } from '@/components/public/post-detail/custom-field-answers'
 import {
   toPortalComments,
   getInitialContentJson,
@@ -435,6 +436,9 @@ export const PostModalContent = memo(function PostModalContent({
                 disabled={updatePost.isPending}
                 className="w-full bg-transparent border-0 outline-none text-2xl font-semibold text-foreground placeholder:text-muted-foreground/60 placeholder:font-normal caret-primary mb-4"
               />
+
+              {/* Answers to the board's intake form fields (read-only) */}
+              <CustomFieldAnswers fields={post.boardCustomFields} values={post.customFieldValues} />
 
               {/* Rich text editor */}
               <RichTextEditor

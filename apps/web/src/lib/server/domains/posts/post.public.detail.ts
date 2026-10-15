@@ -147,6 +147,7 @@ export async function getPublicPostDetail(
         createdAt: posts.createdAt,
         eta: posts.eta,
         pinnedCommentId: posts.pinnedCommentId,
+        customFieldValues: posts.customFieldValues,
         isCommentsLocked: posts.isCommentsLocked,
         boardId: boards.id,
         boardName: boards.name,
@@ -542,6 +543,10 @@ export async function getPublicPostDetail(
     boardAccess: postResult.boardAccess,
     // Public: a report board's rules text, shown beside its reports.
     boardRulesMarkdown: postResult.boardSettings?.rulesMarkdown?.trim() || null,
+    // The submitter's answers to the board's intake fields, with the field
+    // definitions to label them. Follows the post's own visibility.
+    customFieldValues: postResult.customFieldValues ?? null,
+    boardCustomFields: postResult.boardSettings?.customFields ?? [],
     tags: tagsResult,
     comments: hydratedRootComments,
     commentsHasMore,

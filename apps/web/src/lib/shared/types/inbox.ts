@@ -5,7 +5,13 @@
  * Moved here to centralize domain types and fix import direction.
  */
 
-import type { Board, BoardKind, PostTag } from '@/lib/shared/db-types'
+import type {
+  Board,
+  BoardCustomField,
+  BoardKind,
+  CustomFieldValues,
+  PostTag,
+} from '@/lib/shared/db-types'
 import type { PostId, PostStatusId, PostCommentId, PrincipalId } from '@quackback/ids'
 import type { CommentTreeNode, CommentReactionCount } from '@/lib/shared'
 
@@ -53,6 +59,10 @@ export interface PostDetails {
   eta?: Date | string | null
   board: Pick<Board, 'id' | 'name' | 'slug'> & { kind?: BoardKind }
   tags: Pick<PostTag, 'id' | 'name' | 'color'>[]
+  /** The submitter's answers to the board's intake fields (null when none). */
+  customFieldValues?: CustomFieldValues | null
+  /** The board's field definitions, in display order (labels for the answers). */
+  boardCustomFields?: BoardCustomField[]
   comments: CommentWithReplies[]
   /** Whether more root comments exist beyond what's loaded (keyset pagination). */
   commentsHasMore?: boolean

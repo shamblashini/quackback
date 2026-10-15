@@ -75,6 +75,7 @@ export async function getPostWithDetails(postId: PostId): Promise<PostWithDetail
       mergedAt: true,
       summaryJson: true,
       summaryUpdatedAt: true,
+      customFieldValues: true,
     },
     where: eq(posts.id, postId),
     with: {
@@ -165,6 +166,7 @@ export async function getPostWithDetails(postId: PostId): Promise<PostWithDetail
       slug: board.slug,
       kind: resolveBoardKind(board.access),
     },
+    boardCustomFields: board.settings?.customFields ?? [],
     tags: postTagsResult.map((t) => ({
       id: t.id,
       name: t.name,

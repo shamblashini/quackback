@@ -3,6 +3,7 @@
  */
 
 import type { Post, Board, BoardAccess, BoardKind, PostTag, TiptapContent } from '@/lib/server/db'
+import type { BoardCustomField, CustomFieldValues } from '@/lib/shared/db-types'
 import type {
   PostId,
   BoardId,
@@ -83,6 +84,8 @@ export interface PostWithDetails extends Post {
     color: string
   }>
   commentCount: number
+  /** The board's custom intake field definitions, in display order. */
+  boardCustomFields?: BoardCustomField[]
   /** Pinned comment displayed as official response */
   pinnedComment: PinnedComment | null
   /** Author name resolved from member->user relation */
@@ -293,6 +296,10 @@ export interface PublicPostDetail {
   boardAccess: BoardAccess
   /** The board's rules text (Markdown); only report boards set it. */
   boardRulesMarkdown: string | null
+  /** Answers to the board's custom intake fields; null when none were given. */
+  customFieldValues: CustomFieldValues | null
+  /** The board's field definitions, in display order (labels for the answers). */
+  boardCustomFields: BoardCustomField[]
   tags: Array<{ id: string; name: string; color: string }>
   /**
    * First page of root comments (each carrying its full reply subtree).
