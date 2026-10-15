@@ -2,7 +2,12 @@ import { createFileRoute, Link, notFound, useRouteContext } from '@tanstack/reac
 import { useQueryClient, useSuspenseInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { FormattedMessage, useIntl } from 'react-intl'
 import { z } from 'zod'
-import { ChatBubbleLeftIcon, EyeIcon, ShieldCheckIcon } from '@heroicons/react/24/outline'
+import {
+  ChatBubbleLeftIcon,
+  EyeIcon,
+  LockClosedIcon,
+  ShieldCheckIcon,
+} from '@heroicons/react/24/outline'
 import { FeedbackHeader } from '@/components/public/feedback/feedback-header'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -17,15 +22,24 @@ import {
   ReportRulesCollapsible,
   collectReportRules,
 } from '@/components/public/reports/report-rules'
+import { ReportNotice } from '@/components/public/reports/report-notice'
+import {
+  PrivateReportBadge,
+  ReportTypePicker,
+} from '@/components/public/reports/report-type-picker'
 import type { ReportListItem } from '@/lib/server/functions/reports'
 
 const searchSchema = z.object({
   status: z.string().max(100).optional().catch(undefined),
+  /** The report type being filed: a report board's slug (opens its composer). */
+  type: z.string().max(200).optional().catch(undefined),
+  /** List filter: show only reports of this type (a report board's slug). */
+  board: z.string().max(200).optional().catch(undefined),
 })
 
 export const Route = createFileRoute('/_portal/reports/')({
   validateSearch: searchSchema,
-  loaderDeps: ({ search }) => ({ status: search.status }),
+  loaderDeps: ({ search }) => ({ status: search.status, board: search.board }),
   loader: async ({ context, deps }) => {
     const { queryClient, settings, baseUrl } = context
     // Reports are posts, so they live and die with the feedback product.
@@ -33,7 +47,9 @@ export const Route = createFileRoute('/_portal/reports/')({
 
     const [page] = await Promise.all([
       queryClient.ensureQueryData(reportsQueries.page({})),
-      queryClient.ensureInfiniteQueryData(reportsQueries.list({ status: deps.status })),
+      queryClient.ensureInfiniteQueryData(
+        reportsQueries.list({ status: deps.status, boardSlug: deps.board })
+      ),
       queryClient.ensureQueryData(portalQueries.statuses()),
     ])
     // No report board visible to this viewer: there is nothing to show here.
@@ -66,7 +82,7 @@ export const Route = createFileRoute('/_portal/reports/')({
 
 function ReportsPage() {
   const { workspaceName } = Route.useLoaderData()
-  const { status } = Route.useSearch()
+  const { status, type, board: boardFilter } = Route.useSearch()
   const { session } = useRouteContext({ from: '__root__' })
   const queryClient = useQueryClient()
 
@@ -75,7 +91,22 @@ function ReportsPage() {
 
   const user = session?.user ? { name: session.user.name, email: session.user.email } : null
 
-  const rules = collectReportRules(page.boards)
+  // Step 1 offers the types the viewer can file to. When none admit them (a
+  // signed-out or anonymous-session visitor), every type is still offered so the
+  // composer can ask them to sign in instead of the page going silent. A lone
+  // type needs no picking.
+  const fileable = page.boards.filter((b) => page.boardPermissions[b.id]?.canSubmit)
+  const pickable = fileable.length > 0 ? fileable : page.boards
+  const chosen =
+    pickable.find((b) => b.slug === type) ?? (pickable.length === 1 ? pickable[0] : undefined)
+  const hasPrivateType = page.boards.some((b) => b.isPrivate)
+  // The rules sidebar follows the chosen type, and groups every type's rules
+  // while none is chosen.
+  const rules = collectReportRules(chosen ? [chosen] : page.boards)
+  const changeTypeSearch = {
+    ...(status ? { status } : {}),
+    ...(boardFilter ? { board: boardFilter } : {}),
+  }
 
   return (
     <div
@@ -100,33 +131,58 @@ function ReportsPage() {
                 defaultMessage="Report a problem to the moderation team and talk it through with them."
               />
             </p>
-            <p className="mt-3 flex items-start gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-              <EyeIcon className="mt-0.5 size-4 shrink-0" />
-              <FormattedMessage
-                id="portal.reports.transparencyNote"
-                defaultMessage="Every report and the team's replies are public, so the whole community can see how each one was handled. Only the reporter and the team can reply."
-              />
-            </p>
+            {(chosen ? !chosen.isPrivate : !hasPrivateType) && (
+              <p className="mt-3 flex items-start gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                <EyeIcon className="mt-0.5 size-4 shrink-0" />
+                <FormattedMessage
+                  id="portal.reports.transparencyNote"
+                  defaultMessage="Every report and the team's replies are public, so the whole community can see how each one was handled. Only the reporter and the team can reply."
+                />
+              </p>
+            )}
+            {/* The composer carries its own copy of the notice once a type is chosen. */}
+            {!chosen && <ReportNotice markdown={page.reportNotice} className="mt-3" />}
           </div>
 
           {/* Small screens: the rules sit above the composer, folded away. */}
-          <ReportRulesCollapsible sections={rules} className="mb-6 lg:hidden" />
+          {!chosen && <ReportRulesCollapsible sections={rules} className="mb-6 lg:hidden" />}
 
-          <FeedbackHeader
-            variant="report"
-            workspaceName={workspaceName}
+          {chosen ? (
+            <FeedbackHeader
+              key={chosen.id}
+              variant="report"
+              workspaceName={workspaceName}
+              boards={[chosen]}
+              defaultBoardId={chosen.id}
+              boardLocked
+              user={user}
+              boardPermissions={page.boardPermissions}
+              reportGuide={{
+                boardId: chosen.id,
+                boardName: chosen.name,
+                isPrivate: chosen.isPrivate,
+                notice: page.reportNotice,
+                rules: chosen.settings?.rulesMarkdown ?? '',
+                canChangeType: pickable.length > 1,
+                changeTypeSearch,
+              }}
+              onPostCreated={() => {
+                void queryClient.invalidateQueries({ queryKey: ['portal', 'reports'] })
+              }}
+            />
+          ) : (
+            <ReportTypePicker types={pickable} status={status} boardFilter={boardFilter} />
+          )}
+
+          <ReportFilters
+            statuses={statuses}
             boards={page.boards}
-            defaultBoardId={page.boards.length === 1 ? page.boards[0].id : undefined}
-            user={user}
-            boardPermissions={page.boardPermissions}
-            onPostCreated={() => {
-              void queryClient.invalidateQueries({ queryKey: ['portal', 'reports'] })
-            }}
+            status={status}
+            board={boardFilter}
+            type={chosen?.slug}
           />
 
-          <StatusFilter statuses={statuses} active={status} />
-
-          <ReportList status={status} statuses={statuses} />
+          <ReportList status={status} board={boardFilter} statuses={statuses} showType />
         </div>
 
         {rules.length > 0 && (
@@ -146,28 +202,70 @@ interface StatusOption {
   color: string
 }
 
-function StatusFilter({ statuses, active }: { statuses: StatusOption[]; active?: string }) {
+interface FilterState {
+  status?: string
+  board?: string
+  type?: string
+}
+
+function ReportFilters({
+  statuses,
+  boards,
+  status,
+  board,
+  type,
+}: {
+  statuses: StatusOption[]
+  boards: Array<{ id: string; name: string; slug: string; isPrivate: boolean }>
+  status?: string
+  board?: string
+  type?: string
+}) {
+  // Every chip keeps the other filter and the type being filed.
+  const next = (patch: Partial<FilterState>): FilterState => {
+    const merged = { status, board, type, ...patch }
+    return {
+      ...(merged.status ? { status: merged.status } : {}),
+      ...(merged.board ? { board: merged.board } : {}),
+      ...(merged.type ? { type: merged.type } : {}),
+    }
+  }
   return (
-    <nav className="mb-4 flex flex-wrap items-center gap-1.5" aria-label="Filter reports by status">
-      <FilterChip to={undefined} active={!active}>
-        <FormattedMessage id="portal.reports.filterAll" defaultMessage="All" />
-      </FilterChip>
-      {statuses.map((s) => (
-        <FilterChip key={s.id} to={s.slug} active={active === s.slug}>
-          <span className="size-2 rounded-full" style={{ backgroundColor: s.color }} />
-          {s.name}
+    <div className="mb-4 space-y-2">
+      {boards.length > 1 && (
+        <nav className="flex flex-wrap items-center gap-1.5" aria-label="Filter reports by type">
+          <FilterChip search={next({ board: undefined })} active={!board}>
+            <FormattedMessage id="portal.reports.filterAll" defaultMessage="All" />
+          </FilterChip>
+          {boards.map((b) => (
+            <FilterChip key={b.id} search={next({ board: b.slug })} active={board === b.slug}>
+              {b.isPrivate && <LockClosedIcon className="size-3" aria-hidden />}
+              {b.name}
+            </FilterChip>
+          ))}
+        </nav>
+      )}
+      <nav className="flex flex-wrap items-center gap-1.5" aria-label="Filter reports by status">
+        <FilterChip search={next({ status: undefined })} active={!status}>
+          <FormattedMessage id="portal.reports.filterAll" defaultMessage="All" />
         </FilterChip>
-      ))}
-    </nav>
+        {statuses.map((s) => (
+          <FilterChip key={s.id} search={next({ status: s.slug })} active={status === s.slug}>
+            <span className="size-2 rounded-full" style={{ backgroundColor: s.color }} />
+            {s.name}
+          </FilterChip>
+        ))}
+      </nav>
+    </div>
   )
 }
 
 function FilterChip({
-  to,
+  search,
   active,
   children,
 }: {
-  to: string | undefined
+  search: FilterState
   active: boolean
   children: React.ReactNode
 }) {
@@ -178,20 +276,26 @@ function FilterChip({
       variant={active ? 'secondary' : 'outline'}
       className={cn('rounded-full', !active && 'text-muted-foreground')}
     >
-      <Link
-        to="/reports"
-        search={to ? { status: to } : {}}
-        aria-current={active ? 'page' : undefined}
-      >
+      <Link to="/reports" search={search} aria-current={active ? 'page' : undefined}>
         {children}
       </Link>
     </Button>
   )
 }
 
-function ReportList({ status, statuses }: { status?: string; statuses: StatusOption[] }) {
+function ReportList({
+  status,
+  board,
+  statuses,
+  showType,
+}: {
+  status?: string
+  board?: string
+  statuses: StatusOption[]
+  showType: boolean
+}) {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useSuspenseInfiniteQuery(
-    reportsQueries.list({ status })
+    reportsQueries.list({ status, boardSlug: board })
   )
   const reports = data.pages.flatMap((p) => p.reports.items)
   const statusById = new Map(statuses.map((s) => [s.id, s]))
@@ -200,7 +304,7 @@ function ReportList({ status, statuses }: { status?: string; statuses: StatusOpt
     return (
       <div className="rounded-lg border border-dashed px-6 py-12 text-center text-sm text-muted-foreground">
         <ShieldCheckIcon className="mx-auto mb-2 size-6" />
-        {status ? (
+        {status || board ? (
           <FormattedMessage
             id="portal.reports.emptyFiltered"
             defaultMessage="No reports with this status."
@@ -220,6 +324,7 @@ function ReportList({ status, statuses }: { status?: string; statuses: StatusOpt
             key={report.id}
             report={report}
             status={report.statusId ? statusById.get(report.statusId) : undefined}
+            showType={showType}
           />
         ))}
       </ul>
@@ -239,7 +344,15 @@ function ReportList({ status, statuses }: { status?: string; statuses: StatusOpt
   )
 }
 
-function ReportRow({ report, status }: { report: ReportListItem; status?: StatusOption }) {
+function ReportRow({
+  report,
+  status,
+  showType,
+}: {
+  report: ReportListItem
+  status?: StatusOption
+  showType: boolean
+}) {
   const intl = useIntl()
   const author =
     report.authorName ??
@@ -252,7 +365,20 @@ function ReportRow({ report, status }: { report: ReportListItem; status?: Status
         params={{ slug: report.board.slug, postId: report.id }}
         className="block px-4 py-3.5 transition-colors hover:bg-muted/40"
       >
-        {status && <StatusBadge name={status.name} color={status.color} className="mb-1" />}
+        {(status || showType || report.isPrivate) && (
+          <div className="mb-1 flex flex-wrap items-center gap-1.5">
+            {status && <StatusBadge name={status.name} color={status.color} />}
+            {showType && (
+              <span
+                data-testid="report-type"
+                className="rounded-full border px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
+              >
+                {report.board.name}
+              </span>
+            )}
+            {report.isPrivate && <PrivateReportBadge />}
+          </div>
+        )}
         <div className="font-semibold text-foreground line-clamp-2">{report.title}</div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">

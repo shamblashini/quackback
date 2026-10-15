@@ -23,6 +23,11 @@ import { useEnsureAnonSession } from '@/lib/client/hooks/use-ensure-anon-session
 import { SimilarPostsCard } from '@/components/public/similar-posts-card'
 import { BoardCustomFields } from '@/components/public/feedback/board-custom-fields'
 import { PostingToBoard } from '@/components/public/feedback/posting-to-board'
+import {
+  ReportGuide,
+  reportGuideNeedsAcknowledgement,
+  type ReportGuideConfig,
+} from '@/components/public/reports/report-guide'
 import { validatePostCustomFieldValues } from '@/lib/shared/post-custom-fields'
 import type { BoardSettings } from '@/lib/shared/db-types'
 import { signOut } from '@/lib/client/auth-client'
@@ -63,6 +68,12 @@ export interface FeedbackHeaderProps {
    * page) and skips the similar-ideas lookup, which searches feedback boards.
    */
   variant?: 'feedback' | 'report'
+  /**
+   * Report variant only: the guided flow's step 2. The composer opens expanded
+   * for the chosen type, shows the warning and rules above the fields instead of
+   * the board line, and holds Submit until the rules are acknowledged.
+   */
+  reportGuide?: ReportGuideConfig
 }
 
 /** The server's limits for a new post's title and details (createPublicPostSchema). */
@@ -77,6 +88,7 @@ export function FeedbackHeaderAnimated({
   onPostCreated,
   boardLocked = false,
   variant = 'feedback',
+  reportGuide,
 }: FeedbackHeaderProps) {
   const intl = useIntl()
   const isReport = variant === 'report'
@@ -92,7 +104,13 @@ export function FeedbackHeaderAnimated({
   const router = useRouter()
   const queryClient = useQueryClient()
   const session = useSessionContext()
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(!!reportGuide)
+  const [rulesAccepted, setRulesAccepted] = useState(false)
+  const rulesBlock = reportGuideNeedsAcknowledgement(reportGuide) && !rulesAccepted
+  const rulesRequiredMessage = intl.formatMessage({
+    id: 'portal.reports.guide.confirmRequired',
+    defaultMessage: 'Confirm that you have read the submission rules first',
+  })
   const [error, setError] = useState('')
   const { openAuthPopover } = useAuthPopover()
 
@@ -194,6 +212,11 @@ export function FeedbackHeaderAnimated({
           defaultMessage: 'Please add a title',
         })
       )
+      return
+    }
+
+    if (rulesBlock) {
+      setError(rulesRequiredMessage)
       return
     }
 
@@ -299,6 +322,7 @@ export function FeedbackHeaderAnimated({
     detailsRef.current = null
     setCustomFieldValues({})
     setFieldsSubmitAttempted(false)
+    setRulesAccepted(false)
     setError('')
   }
 
@@ -325,7 +349,7 @@ export function FeedbackHeaderAnimated({
     >
       {/* Destination board, above title when expanded */}
       <AnimatePresence>
-        {expanded && boards.length > 0 && (
+        {expanded && boards.length > 0 && !reportGuide && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
@@ -386,6 +410,14 @@ export function FeedbackHeaderAnimated({
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
             className="overflow-hidden"
           >
+            {reportGuide && (
+              <ReportGuide
+                guide={reportGuide}
+                accepted={rulesAccepted}
+                onAcceptedChange={setRulesAccepted}
+              />
+            )}
+
             {/* Error message */}
             <AnimatePresence>
               {error && (
@@ -415,11 +447,16 @@ export function FeedbackHeaderAnimated({
                   onDocumentChange={handleContentChange}
                   placeholder={
                     isReport
-                      ? intl.formatMessage({
-                          id: 'portal.reports.composer.detailsPlaceholder',
-                          defaultMessage:
-                            'Describe what happened, with links or screenshots. Reports are public.',
-                        })
+                      ? reportGuide?.isPrivate
+                        ? intl.formatMessage({
+                            id: 'portal.reports.composer.detailsPlaceholderPrivate',
+                            defaultMessage: 'Describe what happened, with links or screenshots.',
+                          })
+                        : intl.formatMessage({
+                            id: 'portal.reports.composer.detailsPlaceholder',
+                            defaultMessage:
+                              'Describe what happened, with links or screenshots. Reports are public.',
+                          })
                       : intl.formatMessage({
                           id: 'portal.feedback.header.detailsPlaceholder',
                           defaultMessage: 'Add more details... Type / for commands',
@@ -552,21 +589,23 @@ export function FeedbackHeaderAnimated({
                 <Button
                   size="sm"
                   onClick={handleSubmit}
-                  disabled={createPost.isPending || !canSubmit}
+                  disabled={createPost.isPending || !canSubmit || rulesBlock}
                   title={
-                    !canSubmit
-                      ? noAccess
-                        ? intl.formatMessage({
-                            id: 'portal.feedback.header.submitTooltipNoAccess',
-                            defaultMessage: "You don't have access to post on this board",
-                          })
-                        : isReport
-                          ? signInMessage
-                          : intl.formatMessage({
-                              id: 'portal.feedback.header.submitTooltipSignIn',
-                              defaultMessage: 'Please sign in to submit feedback',
+                    rulesBlock
+                      ? rulesRequiredMessage
+                      : !canSubmit
+                        ? noAccess
+                          ? intl.formatMessage({
+                              id: 'portal.feedback.header.submitTooltipNoAccess',
+                              defaultMessage: "You don't have access to post on this board",
                             })
-                      : undefined
+                          : isReport
+                            ? signInMessage
+                            : intl.formatMessage({
+                                id: 'portal.feedback.header.submitTooltipSignIn',
+                                defaultMessage: 'Please sign in to submit feedback',
+                              })
+                        : undefined
                   }
                   className="portal-submit-button bg-[var(--portal-button-background)] text-[var(--portal-button-foreground)] hover:bg-[var(--portal-button-background)]/90"
                 >

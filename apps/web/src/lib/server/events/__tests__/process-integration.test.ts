@@ -30,6 +30,11 @@ vi.mock('../registry', () => ({
 // The queue resolves `db` through the app's proxy; point it at the harness's
 // own committing connection, keeping the real tables/operators so the handler's
 // webhook and integration writes still compile against the real schema.
+// The private-report guard queries boards, which this suite's db mock does not model.
+vi.mock('../resolvers/private-report-guard', () => ({
+  touchesPrivateReportBoard: async () => false,
+}))
+
 vi.mock('@/lib/server/db', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/server/db')>()),
   db: new Proxy(

@@ -7,6 +7,8 @@ import {
 
 export interface ReportsListParams {
   status?: string
+  /** Narrow the list to one report type: the slug of a report board. */
+  boardSlug?: string
   search?: string
 }
 
@@ -21,7 +23,14 @@ export const reportsQueries = {
   /** The report list, paged for "Load more". */
   list: (params: ReportsListParams) =>
     infiniteQueryOptions({
-      queryKey: ['portal', 'reports', 'list', params.status ?? null, params.search ?? null],
+      queryKey: [
+        'portal',
+        'reports',
+        'list',
+        params.status ?? null,
+        params.boardSlug ?? null,
+        params.search ?? null,
+      ],
       initialPageParam: 1,
       queryFn: ({ pageParam }): Promise<ReportsPageData> =>
         fetchReportsPageFn({ data: { ...params, page: pageParam } }),

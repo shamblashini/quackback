@@ -83,15 +83,17 @@ export function ReportRulesCard({
   )
 }
 
-/** The rules as a collapsible card (closed by default) for small screens. */
+/** The rules as a collapsible card (closed unless `defaultOpen`). */
 export function ReportRulesCollapsible({
   sections,
   className,
+  defaultOpen = false,
 }: {
   sections: ReportRulesSection[]
   className?: string
+  defaultOpen?: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
   if (sections.length === 0) return null
   return (
     <aside

@@ -34,6 +34,11 @@ const mockInnerJoin = vi.fn()
 const mockDbWhere = vi.fn()
 const mockFindMany = vi.fn()
 
+// The private-report guard queries boards, which this suite's db mock does not model.
+vi.mock('../resolvers/private-report-guard', () => ({
+  touchesPrivateReportBoard: async () => false,
+}))
+
 vi.mock('@/lib/server/db', async (importOriginal) => ({
   // Spread the real db module so tables/operators stay current; override only what this suite drives.
   ...(await importOriginal<typeof import('@/lib/server/db')>()),

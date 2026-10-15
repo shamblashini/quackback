@@ -20,6 +20,9 @@ import { resolvePortalAccessForRequest } from './portal-access'
 import { runBuildBoardPermissions, runLoadAllowAnonymous } from './portal'
 import { listPublicBoardsWithStats } from '@/lib/server/domains/boards/board.public'
 import { listPublicPostsWithVotesAndAvatars } from '@/lib/server/domains/posts/post.public'
+import { getPortalConfig } from '@/lib/server/domains/settings/settings.service'
+import { isPrivateReportAccess } from '@/lib/shared/report-privacy'
+import { normalizeBoardAccess } from '@/lib/shared/schemas/boards'
 import { logger } from '@/lib/server/logger'
 
 const log = logger.child({ component: 'reports' })
@@ -28,6 +31,8 @@ export const REPORTS_PAGE_SIZE = 20
 
 const fetchReportsSchema = z.object({
   status: z.string().max(100).optional(),
+  /** Narrow the list to one report type: the slug of a report board. */
+  boardSlug: z.string().max(200).optional(),
   search: z.string().max(200).optional(),
   page: z.number().int().min(1).max(1000).optional(),
 })
@@ -43,6 +48,8 @@ export interface ReportListItem {
   avatarUrl: string | null
   createdAt: string
   board: { id: string; name: string; slug: string }
+  /** The report sits on a private board: only its reporter and the team see it. */
+  isPrivate: boolean
 }
 
 export interface ReportsPageData {
@@ -52,7 +59,11 @@ export interface ReportsPageData {
     slug: string
     description: string | null
     settings: BoardSettings
+    /** Private report type: only the reporter and the team can read its reports. */
+    isPrivate: boolean
   }>
+  /** Markdown notice shown in red above every report form; empty when unset. */
+  reportNotice: string
   boardPermissions: Record<string, { canSubmit: boolean; canVote: boolean }>
   reports: { items: ReportListItem[]; hasMore: boolean }
 }
@@ -60,6 +71,7 @@ export interface ReportsPageData {
 const EMPTY: ReportsPageData = {
   boards: [],
   boardPermissions: {},
+  reportNotice: '',
   reports: { items: [], hasMore: false },
 }
 
@@ -74,11 +86,12 @@ export const fetchReportsPageFn = createServerFn({ method: 'GET' })
     const auth = await getOptionalAuth()
     const actor = await policyActorFromAuth(auth)
 
-    const [boardsRaw, postsResult, allowAnonymous] = await Promise.all([
+    const [boardsRaw, postsResult, allowAnonymous, portalConfig] = await Promise.all([
       listPublicBoardsWithStats(actor, 'reports'),
       listPublicPostsWithVotesAndAvatars({
         actor,
         boardKind: 'reports',
+        boardSlug: data.boardSlug || undefined,
         allStatuses: true,
         statusSlugs: data.status ? [data.status] : undefined,
         search: data.search || undefined,
@@ -87,11 +100,17 @@ export const fetchReportsPageFn = createServerFn({ method: 'GET' })
         limit: REPORTS_PAGE_SIZE,
       }),
       runLoadAllowAnonymous(),
+      getPortalConfig(),
     ])
 
     if (boardsRaw.length === 0) return EMPTY
 
     const boardPermissions = await runBuildBoardPermissions(actor, boardsRaw, allowAnonymous)
+    const privateBoardIds = new Set(
+      boardsRaw
+        .filter((b) => isPrivateReportAccess(normalizeBoardAccess(b.access)))
+        .map((b) => b.id as string)
+    )
 
     return {
       // The access matrix stays server-side, as on fetchPortalData (#191).
@@ -101,8 +120,10 @@ export const fetchReportsPageFn = createServerFn({ method: 'GET' })
         slug: b.slug,
         description: b.description,
         settings: (b.settings ?? {}) as BoardSettings,
+        isPrivate: privateBoardIds.has(b.id),
       })),
       boardPermissions,
+      reportNotice: portalConfig.reportNotice?.trim() ?? '',
       reports: {
         items: postsResult.items.map((post) => ({
           id: post.id,
@@ -113,6 +134,7 @@ export const fetchReportsPageFn = createServerFn({ method: 'GET' })
           avatarUrl: post.avatarUrl,
           createdAt: post.createdAt.toISOString(),
           board: post.board,
+          isPrivate: privateBoardIds.has(post.board.id),
         })),
         hasMore: postsResult.hasMore,
       },

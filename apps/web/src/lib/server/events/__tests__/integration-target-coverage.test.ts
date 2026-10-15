@@ -29,6 +29,11 @@ vi.mock('@/lib/server/cache', () => ({
 
 // --- DB mock (mappings come from the cache mock, so the select chain is unused) ---
 // Spread the real db module so tables/operators stay current; override only what this suite drives.
+// The private-report guard queries boards, which this suite's db mock does not model.
+vi.mock('../resolvers/private-report-guard', () => ({
+  touchesPrivateReportBoard: async () => false,
+}))
+
 vi.mock('@/lib/server/db', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/server/db')>()),
   db: {
