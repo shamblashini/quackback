@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { BoardCustomFields } from '../board-custom-fields'
+import { IntlProvider } from 'react-intl'
+import { BoardCustomFields, type BoardCustomFieldsProps } from '../board-custom-fields'
 import type { BoardCustomField } from '@/lib/shared/db-types'
 
 const FIELDS: BoardCustomField[] = [
@@ -20,8 +21,16 @@ const FIELDS: BoardCustomField[] = [
   { key: 'read_docs', label: 'I read the docs', type: 'checkbox', required: true },
 ]
 
+function renderWith(props: BoardCustomFieldsProps) {
+  return render(
+    <IntlProvider locale="en" defaultLocale="en">
+      <BoardCustomFields {...props} />
+    </IntlProvider>
+  )
+}
+
 function renderFields(values: Record<string, unknown> = {}, onChange = vi.fn()) {
-  render(<BoardCustomFields fields={FIELDS} values={values} onChange={onChange} />)
+  renderWith({ fields: FIELDS, values, onChange })
   return onChange
 }
 
@@ -45,7 +54,7 @@ describe('<BoardCustomFields>', () => {
   })
 
   it('renders nothing when the board configures no fields', () => {
-    const { container } = render(<BoardCustomFields fields={[]} values={{}} onChange={vi.fn()} />)
+    const { container } = renderWith({ fields: [], values: {}, onChange: vi.fn() })
     expect(container.firstChild).toBeNull()
   })
 
@@ -84,5 +93,84 @@ describe('<BoardCustomFields>', () => {
     renderFields({ priority: 'p3' })
     const trigger = screen.getByRole('combobox', { name: /Priority/ })
     expect(trigger.textContent).toContain('p3')
+  })
+})
+
+describe('<BoardCustomFields> guided fields', () => {
+  const GUIDED: BoardCustomField[] = [
+    {
+      key: 'video',
+      label: 'Video link',
+      type: 'url',
+      required: true,
+      helpText: 'Paste the link.\nSecond line.',
+      warnDomains: ['youtube.com', 'youtu.be'],
+      warnMessage: 'Prefer YouTube links',
+    },
+    { key: 'when', label: 'When', type: 'datetime', required: false },
+    { key: 'ids', label: 'Game IDs', type: 'id_list', required: true, placeholder: '#7' },
+    {
+      key: 'nick',
+      label: 'Nickname',
+      type: 'text',
+      required: false,
+      pattern: { regex: '^[a-z]+$', message: 'Letters only' },
+    },
+  ]
+
+  it('shows help text and placeholders', () => {
+    renderWith({ fields: GUIDED, values: {}, onChange: vi.fn() })
+    expect(screen.getByText(/Paste the link\./)).toBeTruthy()
+    expect(screen.getByLabelText(/Game IDs/).getAttribute('placeholder')).toBe('#7')
+    expect(screen.getByLabelText(/Video link/)).toHaveProperty('type', 'url')
+    expect(screen.getByLabelText(/When/)).toHaveProperty('type', 'datetime-local')
+  })
+
+  it('shows no error until the field is visited, then on blur', () => {
+    renderWith({ fields: GUIDED, values: { ids: '' }, onChange: vi.fn() })
+    expect(screen.queryByText('This field is required')).toBeNull()
+    fireEvent.blur(screen.getByLabelText(/Game IDs/))
+    expect(screen.getAllByText('This field is required')).toHaveLength(1)
+    expect(screen.getByLabelText(/Game IDs/).getAttribute('aria-invalid')).toBe('true')
+  })
+
+  it('shows every error after a failed submit attempt', () => {
+    renderWith({ fields: GUIDED, values: { ids: '' }, onChange: vi.fn(), showAllErrors: true })
+    expect(screen.getAllByText('This field is required')).toHaveLength(2)
+  })
+
+  it('shows the admin message for a pattern mismatch', () => {
+    renderWith({ fields: GUIDED, values: { nick: 'ABC' }, onChange: vi.fn() })
+    fireEvent.blur(screen.getByLabelText(/Nickname/))
+    expect(screen.getByText('Letters only')).toBeTruthy()
+  })
+
+  it('shows an amber warning for an off-domain link without an error', () => {
+    renderWith({
+      fields: GUIDED,
+      values: { video: 'https://vimeo.com/1' },
+      onChange: vi.fn(),
+    })
+    const warning = screen.getByText('Prefer YouTube links')
+    expect(warning.closest('p')?.className).toContain('amber')
+    expect(screen.getByLabelText(/Video link/).getAttribute('aria-invalid')).toBeNull()
+  })
+
+  it('does not warn for an allowed domain', () => {
+    renderWith({
+      fields: GUIDED,
+      values: { video: 'https://www.youtube.com/watch?v=1' },
+      onChange: vi.fn(),
+    })
+    expect(screen.queryByText('Prefer YouTube links')).toBeNull()
+  })
+
+  it('reports a datetime as an ISO instant', () => {
+    const onChange = vi.fn()
+    renderWith({ fields: GUIDED, values: {}, onChange })
+    fireEvent.change(screen.getByLabelText(/When/), { target: { value: '2026-05-01T10:30' } })
+    const [key, value] = onChange.mock.calls[0]
+    expect(key).toBe('when')
+    expect(value).toBe(new Date('2026-05-01T10:30').toISOString())
   })
 })

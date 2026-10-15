@@ -144,6 +144,7 @@ export function FeedbackHeaderAnimated({
 
   const [title] = useState(createTitleStore)
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({})
+  const [fieldsSubmitAttempted, setFieldsSubmitAttempted] = useState(false)
   const titleInputRef = useRef<HTMLInputElement>(null)
 
   // The selected board's declared intake fields; answers validate against
@@ -211,6 +212,7 @@ export function FeedbackHeaderAnimated({
     if (boardCustomFields.length > 0) {
       const parsed = validatePostCustomFieldValues(boardCustomFields, customFieldValues)
       if (!parsed.ok) {
+        setFieldsSubmitAttempted(true)
         setError(parsed.errors[0].message)
         return
       }
@@ -296,6 +298,7 @@ export function FeedbackHeaderAnimated({
     title.set('')
     detailsRef.current = null
     setCustomFieldValues({})
+    setFieldsSubmitAttempted(false)
     setError('')
   }
 
@@ -339,6 +342,7 @@ export function FeedbackHeaderAnimated({
                 // Answers are per-board: switching boards drops the previous
                 // board's field values rather than smuggling them across.
                 setCustomFieldValues({})
+                setFieldsSubmitAttempted(false)
               }}
             />
           </motion.div>
@@ -446,6 +450,7 @@ export function FeedbackHeaderAnimated({
                 <BoardCustomFields
                   fields={boardCustomFields}
                   values={customFieldValues}
+                  showAllErrors={fieldsSubmitAttempted}
                   onChange={(key, value) =>
                     setCustomFieldValues((prev) => ({ ...prev, [key]: value }))
                   }
