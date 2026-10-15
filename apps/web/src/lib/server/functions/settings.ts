@@ -348,6 +348,8 @@ export const updatePortalConfigSchema = z.object({
       enabled: z.boolean().optional(),
     })
     .optional(),
+  // Markdown notice shown in red above every report form; '' clears it.
+  reportNotice: z.string().max(4000).optional(),
   nav: z
     .object({
       items: z

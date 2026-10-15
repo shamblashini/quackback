@@ -369,7 +369,16 @@ export interface PortalConfig {
   nav?: PortalNavConfig
   /** Support tab (conversations on the portal). Optional — absent = disabled. */
   support?: PortalSupportConfig
+  /**
+   * One Markdown notice shown in red above every report form and at the top of
+   * the portal's /reports page. Optional — absent or blank = no notice. Plain
+   * JSON inside `portalConfig`, so it needs no migration.
+   */
+  reportNotice?: string
 }
+
+/** Longest report notice the portal config accepts. */
+export const REPORT_NOTICE_MAX_LENGTH = 4000
 
 /**
  * Portal Support tab configuration. Gated by `isPortalSupportSurfaceEnabled`
@@ -1001,6 +1010,8 @@ export interface UpdatePortalConfigInput {
   /** Replaced wholesale (items is an ordered array — never merged). */
   nav?: PortalNavConfig
   support?: Partial<PortalSupportConfig>
+  /** Replaced wholesale; an empty string clears the notice. */
+  reportNotice?: string
 }
 
 // =============================================================================

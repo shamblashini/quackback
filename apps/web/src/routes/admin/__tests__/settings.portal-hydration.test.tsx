@@ -145,7 +145,12 @@ describe('portal settings page hydration', () => {
     expect(container.querySelector('[data-testid="portal-preview"]')).toBeTruthy()
     expect(previewRenders.count).toBe(1)
 
-    expect([...cardRenders.keys()]).toEqual(['Appearance', 'Navigation', 'Welcome message'])
+    expect([...cardRenders.keys()]).toEqual([
+      'Appearance',
+      'Navigation',
+      'Welcome message',
+      'Report notice',
+    ])
     for (const [title, renders] of cardRenders) {
       expect({ title, renders }).toEqual({ title, renders: 1 })
     }
@@ -157,6 +162,18 @@ describe('portal settings page hydration', () => {
     const container = await hydratePage()
     act(() => {
       fireEvent.click(container.querySelector('[data-testid="rich-text-editor"]')!)
+    })
+    expect(container.querySelector('[data-slot="draft-bar"]')).toBeTruthy()
+  })
+
+  it('takes an edit to the report notice as an unsaved change', async () => {
+    const container = await hydratePage()
+    const notice = container.querySelector(
+      'textarea[aria-label="Report notice"]'
+    ) as HTMLTextAreaElement
+    expect(notice).toBeTruthy()
+    act(() => {
+      fireEvent.change(notice, { target: { value: 'False reports are punished.' } })
     })
     expect(container.querySelector('[data-slot="draft-bar"]')).toBeTruthy()
   })

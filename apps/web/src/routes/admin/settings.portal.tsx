@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/solid'
 import { Button, NewTabHint } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Slider } from '@/components/ui/slider'
 import {
   Select,
@@ -139,6 +140,9 @@ function PortalPage() {
   )
   const navBaseline = useRef(JSON.stringify(navItems))
 
+  const [reportNotice, setReportNotice] = useState(config.reportNotice ?? '')
+  const reportNoticeBaseline = useRef(config.reportNotice ?? '')
+
   const [saving, setSaving] = useState(false)
   const [upgrade, setUpgrade] = useState<UpgradeDescription | null>(null)
 
@@ -146,7 +150,8 @@ function PortalPage() {
     state.cssText !== themeBaseline.current.css || state.themeMode !== themeBaseline.current.mode
   const welcomeDirty = JSON.stringify(welcomeBody) !== welcomeBaseline.current
   const navDirty = JSON.stringify(navItems) !== navBaseline.current
-  const isDirty = themeDirty || welcomeDirty || navDirty
+  const reportNoticeDirty = reportNotice !== reportNoticeBaseline.current
+  const isDirty = themeDirty || welcomeDirty || navDirty || reportNoticeDirty
 
   // Navigating away with unsaved edits prompts; closing the tab warns too.
   useBlocker({
@@ -174,13 +179,15 @@ function PortalPage() {
         await state.saveTheme()
         themeBaseline.current = { css: state.cssText, mode: state.themeMode }
       }
-      if (welcomeDirty || navDirty) {
+      if (welcomeDirty || navDirty || reportNoticeDirty) {
         // Placeholder link rows (no URL yet) are drafts, not config.
         const items = navItems.filter((i) => i.type !== 'link' || !!i.url)
         await updatePortalConfig.mutateAsync({
           ...(welcomeDirty ? { welcomeCard: { body: welcomeBody } } : {}),
           ...(navDirty ? { nav: { items } } : {}),
+          ...(reportNoticeDirty ? { reportNotice: reportNotice.trim() } : {}),
         })
+        reportNoticeBaseline.current = reportNotice
         welcomeBaseline.current = JSON.stringify(welcomeBody)
         navBaseline.current = JSON.stringify(navItems)
       }
@@ -207,6 +214,7 @@ function PortalPage() {
     state.setThemeMode(themeBaseline.current.mode)
     setWelcomeBody(JSON.parse(welcomeBaseline.current) as TiptapContent)
     setNavItems(JSON.parse(navBaseline.current) as PortalNavItemConfig[])
+    setReportNotice(reportNoticeBaseline.current)
   }
 
   // ============================================
@@ -375,6 +383,20 @@ function PortalPage() {
             description="Shown above the post list on your portal home. Leave empty to show nothing."
           >
             <WelcomeBodyEditor value={welcomeBody} onChange={setWelcomeBody} />
+          </SettingsCard>
+
+          <SettingsCard
+            title="Report notice"
+            description="One notice for every report type, shown in red above each report form and at the top of the Reports page. Markdown is supported. Leave empty to show nothing."
+          >
+            <Textarea
+              value={reportNotice}
+              onChange={(e) => setReportNotice(e.target.value)}
+              rows={5}
+              maxLength={4000}
+              aria-label="Report notice"
+              placeholder="False reports are punished. Read the rules before you file."
+            />
           </SettingsCard>
         </div>
 
