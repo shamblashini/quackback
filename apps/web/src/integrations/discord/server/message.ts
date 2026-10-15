@@ -6,7 +6,7 @@
 import type { EventData } from '@/lib/server/events/types'
 import { truncate, formatStatus, getStatusEmoji } from '@/lib/server/events/hook-utils'
 import { commentPlainText } from '@/lib/server/markdown-tiptap'
-import { getAuthorName, buildPostUrl } from '@/lib/server/integrations/message-utils'
+import { buildPostUrl } from '@/lib/server/integrations/message-utils'
 
 interface DiscordEmbed {
   title?: string
@@ -20,18 +20,9 @@ interface DiscordEmbed {
   timestamp?: string
 }
 
-/** A link button: Discord shows it below the message's embeds. */
-interface DiscordLinkButton {
-  type: 2
-  style: 5
-  label: string
-  url: string
-}
-
 interface DiscordMessage {
   content?: string
   embeds?: DiscordEmbed[]
-  components?: Array<{ type: 1; components: DiscordLinkButton[] }>
   allowed_mentions?: { parse: Array<'users' | 'roles' | 'everyone'> }
 }
 
@@ -58,6 +49,14 @@ function getStatusColor(status: string): number {
   return map[status.toLowerCase().replace(/\s+/g, '_')] ?? COLORS.blue
 }
 
+// The messages are in Ukrainian: this deployment's Discord community reads
+// Ukrainian. User-written text (titles, comments, status names) is shown as is.
+const SYSTEM_ACTOR = 'Система'
+
+function authorName(source: { authorName?: string | null; authorEmail?: string | null }): string {
+  return source.authorName || source.authorEmail || 'Анонім'
+}
+
 /**
  * Build a Discord message for an event.
  */
@@ -66,7 +65,7 @@ export function buildDiscordMessage(event: EventData, rootUrl: string): DiscordM
     case 'post.created': {
       const { post } = event.data
       const postUrl = buildPostUrl(rootUrl, post.boardSlug, post.id)
-      const author = getAuthorName(post)
+      const author = authorName(post)
 
       // Title only: the post's body is read on the portal, not in the channel.
       return {
@@ -74,10 +73,9 @@ export function buildDiscordMessage(event: EventData, rootUrl: string): DiscordM
           {
             title: truncate(post.title, 256),
             url: postUrl,
-            description: `**[Read the post →](${postUrl})**`,
+            description: `**[Читати допис →](${postUrl})**`,
             color: COLORS.blue,
-            author: { name: `📬 New feedback from ${author}` },
-            footer: { text: `Board: ${post.boardSlug}` },
+            author: { name: `📬 Новий відгук від ${author}` },
             timestamp: event.timestamp,
           },
         ],
@@ -88,7 +86,7 @@ export function buildDiscordMessage(event: EventData, rootUrl: string): DiscordM
       const { post, previousStatus, newStatus } = event.data
       const postUrl = buildPostUrl(rootUrl, post.boardSlug, post.id)
       const emoji = getStatusEmoji(newStatus)
-      const actor = event.actor.email || 'System'
+      const actor = event.actor.email || SYSTEM_ACTOR
 
       return {
         embeds: [
@@ -97,7 +95,7 @@ export function buildDiscordMessage(event: EventData, rootUrl: string): DiscordM
             url: postUrl,
             description: `${formatStatus(previousStatus)} → **${formatStatus(newStatus)}**`,
             color: getStatusColor(newStatus),
-            author: { name: `${emoji} Status changed by ${actor}` },
+            author: { name: `${emoji} Статус змінено (${actor})` },
             timestamp: event.timestamp,
           },
         ],
@@ -107,7 +105,7 @@ export function buildDiscordMessage(event: EventData, rootUrl: string): DiscordM
     case 'post.updated': {
       const { post, changedFields } = event.data
       const postUrl = buildPostUrl(rootUrl, post.boardSlug, post.id)
-      const actor = event.actor.email || 'System'
+      const actor = event.actor.email || SYSTEM_ACTOR
       const fields = changedFields.join(', ')
 
       return {
@@ -115,9 +113,9 @@ export function buildDiscordMessage(event: EventData, rootUrl: string): DiscordM
           {
             title: truncate(post.title, 256),
             url: postUrl,
-            description: `Changed: ${fields}`,
+            description: `Змінено: ${fields}`,
             color: COLORS.yellow,
-            author: { name: `✏️ Post updated by ${actor}` },
+            author: { name: `✏️ Допис оновлено (${actor})` },
             timestamp: event.timestamp,
           },
         ],
@@ -126,14 +124,14 @@ export function buildDiscordMessage(event: EventData, rootUrl: string): DiscordM
 
     case 'post.deleted': {
       const { post } = event.data
-      const actor = event.actor.email || 'System'
+      const actor = event.actor.email || SYSTEM_ACTOR
 
       return {
         embeds: [
           {
             title: truncate(post.title, 256),
             color: COLORS.grey,
-            author: { name: `🗑️ Post deleted by ${actor}` },
+            author: { name: `🗑️ Допис видалено (${actor})` },
             timestamp: event.timestamp,
           },
         ],
@@ -143,16 +141,16 @@ export function buildDiscordMessage(event: EventData, rootUrl: string): DiscordM
     case 'post.merged': {
       const { duplicatePost, canonicalPost } = event.data
       const canonicalUrl = buildPostUrl(rootUrl, canonicalPost.boardSlug, canonicalPost.id)
-      const actor = event.actor.email || 'System'
+      const actor = event.actor.email || SYSTEM_ACTOR
 
       return {
         embeds: [
           {
             title: truncate(canonicalPost.title, 256),
             url: canonicalUrl,
-            description: `"${duplicatePost.title}" merged into this post`,
+            description: `«${duplicatePost.title}» об’єднано з цим дописом`,
             color: COLORS.orange,
-            author: { name: `🔀 Post merged by ${actor}` },
+            author: { name: `🔀 Дописи об’єднано (${actor})` },
             timestamp: event.timestamp,
           },
         ],
@@ -163,7 +161,7 @@ export function buildDiscordMessage(event: EventData, rootUrl: string): DiscordM
       const { comment, post } = event.data
       const postUrl = buildPostUrl(rootUrl, post.boardSlug, post.id)
       const content = truncate(commentPlainText(comment), 300)
-      const author = getAuthorName(comment)
+      const author = authorName(comment)
 
       return {
         embeds: [
@@ -172,7 +170,7 @@ export function buildDiscordMessage(event: EventData, rootUrl: string): DiscordM
             url: postUrl,
             description: content || undefined,
             color: COLORS.blue,
-            author: { name: `💬 New comment from ${author}` },
+            author: { name: `💬 Новий коментар від ${author}` },
             timestamp: event.timestamp,
           },
         ],
@@ -183,23 +181,15 @@ export function buildDiscordMessage(event: EventData, rootUrl: string): DiscordM
       const { changelog } = event.data
       const entryUrl = `${rootUrl}/changelog/${changelog.id}`
 
-      // Header, linked title and featured image only: the entry is read on
-      // the portal. Discord always draws an embed's image after its text, so
-      // the read link is a button, which sits below the whole embed.
+      // A compact card: the header and the entry title, which links to the
+      // entry. The entry itself is read on the portal.
       return {
         embeds: [
           {
-            author: { name: 'Changelog 📢' },
+            author: { name: 'Журнал змін 📢' },
             title: truncate(changelog.title, 256),
             url: entryUrl,
-            ...(changelog.featuredImageUrl && { image: { url: changelog.featuredImageUrl } }),
             color: COLORS.changelog,
-          },
-        ],
-        components: [
-          {
-            type: 1,
-            components: [{ type: 2, style: 5, label: 'Read the full update', url: entryUrl }],
           },
         ],
         // The entry is admin-written text: never let it ping @everyone or roles.
@@ -208,6 +198,6 @@ export function buildDiscordMessage(event: EventData, rootUrl: string): DiscordM
     }
 
     default:
-      return { content: `Quackback event: ${(event as EventData).type}` }
+      return { content: `Подія Quackback: ${(event as EventData).type}` }
   }
 }

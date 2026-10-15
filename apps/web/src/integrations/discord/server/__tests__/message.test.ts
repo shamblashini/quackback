@@ -31,58 +31,34 @@ function changelogPublishedEvent(overrides: Record<string, unknown> = {}): Event
 }
 
 describe('buildDiscordMessage — changelog.published', () => {
-  it('links the title to the entry itself', () => {
+  it('shows the Ukrainian header and the title linking to the entry', () => {
     const embed = buildDiscordMessage(changelogPublishedEvent(), ROOT_URL).embeds?.[0]
 
-    expect(embed).toMatchObject({ title: 'Dark mode is here', url: ENTRY_URL })
+    expect(embed).toMatchObject({
+      author: { name: 'Журнал змін 📢' },
+      title: 'Dark mode is here',
+      url: ENTRY_URL,
+    })
   })
 
-  it('shows a Changelog header and no body, footer or time', () => {
-    const embed = buildDiscordMessage(changelogPublishedEvent(), ROOT_URL).embeds?.[0]
+  it('is a compact card: no body, image, footer, time or button', () => {
+    const message = buildDiscordMessage(
+      changelogPublishedEvent({ featuredImageUrl: 'https://cdn.example.com/cover.png' }),
+      ROOT_URL
+    )
+    const embed = message.embeds?.[0]
 
-    expect(embed?.author).toEqual({ name: 'Changelog 📢' })
-    expect(embed).not.toHaveProperty('description')
-    expect(embed).not.toHaveProperty('footer')
-    expect(embed).not.toHaveProperty('timestamp')
-  })
-
-  it('puts the read link in a button below the embed', () => {
-    const message = buildDiscordMessage(changelogPublishedEvent(), ROOT_URL)
-
-    expect(message.components).toEqual([
-      {
-        type: 1,
-        components: [{ type: 2, style: 5, label: 'Read the full update', url: ENTRY_URL }],
-      },
-    ])
+    for (const key of ['description', 'image', 'footer', 'timestamp']) {
+      expect(embed).not.toHaveProperty(key)
+    }
+    expect(message).not.toHaveProperty('components')
+    expect(JSON.stringify(message)).not.toContain('Switch the')
   })
 
   it('uses the warm orange accent', () => {
     const embed = buildDiscordMessage(changelogPublishedEvent(), ROOT_URL).embeds?.[0]
 
     expect(embed?.color).toBe(0xe7a33d)
-  })
-
-  it('shows the featured image when the entry has one', () => {
-    const embed = buildDiscordMessage(
-      changelogPublishedEvent({ featuredImageUrl: 'https://cdn.example.com/cover.png' }),
-      ROOT_URL
-    ).embeds?.[0]
-
-    expect(embed?.image).toEqual({ url: 'https://cdn.example.com/cover.png' })
-  })
-
-  it('leaves the image out when the entry has none', () => {
-    const embed = buildDiscordMessage(changelogPublishedEvent(), ROOT_URL).embeds?.[0]
-
-    expect(embed).not.toHaveProperty('image')
-  })
-
-  it('still builds a message for events queued before featuredImageUrl existed', () => {
-    const event = changelogPublishedEvent()
-    delete (event.data as { changelog: Record<string, unknown> }).changelog.featuredImageUrl
-
-    expect(buildDiscordMessage(event, ROOT_URL).embeds?.[0]).not.toHaveProperty('image')
   })
 
   it('never lets the entry ping @everyone, roles or users', () => {
@@ -119,7 +95,8 @@ describe('buildDiscordMessage — post.created', () => {
     const postUrl = `${ROOT_URL}/b/features/posts/post_123`
 
     expect(embed).toMatchObject({ title: 'Add dark mode', url: postUrl })
-    expect(embed?.description).toBe(`**[Read the post →](${postUrl})**`)
+    expect(embed?.description).toBe(`**[Читати допис →](${postUrl})**`)
+    expect(embed?.author).toEqual({ name: '📬 Новий відгук від Ada' })
     expect(JSON.stringify(embed)).not.toContain('long body')
   })
 })
