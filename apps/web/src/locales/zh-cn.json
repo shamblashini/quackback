@@ -1153,6 +1153,8 @@
   "portal.reports.empty": "暂无举报。",
   "portal.reports.emptyFiltered": "没有此状态的举报。",
   "portal.reports.loadMore": "加载更多",
+  "portal.reports.rules.title": "规则",
+  "portal.reports.backToPortal": "返回门户",
   "portal.reports.anonymous": "匿名",
   "portal.reports.replies": "{count, plural, other {# 条回复}}",
   "portal.reports.composer.errorSignIn": "请登录后提交举报",

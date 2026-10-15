@@ -103,3 +103,37 @@ describe('<BoardGeneralForm> rename navigation', () => {
     expect(navigate).not.toHaveBeenCalled()
   })
 })
+
+describe('<BoardGeneralForm> report rules', () => {
+  const reportAccess = {
+    view: 'anonymous',
+    vote: 'team',
+    comment: 'anonymous',
+    submit: 'anonymous',
+    segments: { view: [], vote: [], comment: [], submit: [] },
+    moderation: { anonPosts: 'inherit', signedPosts: 'inherit', comments: 'inherit' },
+    kind: 'reports',
+  } as never
+
+  it('hides the rules field on a feedback board', () => {
+    render(<BoardGeneralForm board={board} />)
+    expect(screen.queryByLabelText('Report rules')).toBeNull()
+  })
+
+  it('saves edited rules as a settings patch on a report board', async () => {
+    render(
+      <BoardGeneralForm
+        board={{ ...board, access: reportAccess, settings: { rulesMarkdown: 'old' } }}
+      />
+    )
+    expect(screen.getByText(/Markdown supported/)).toBeInTheDocument()
+    await edit('Report rules', '# New rules')
+    expect(mutate).toHaveBeenCalledTimes(1)
+    expect(mutate.mock.calls[0]![0]).toEqual({
+      id: board.id,
+      name: 'Bug Reports',
+      description: 'Track issues',
+      settings: { rulesMarkdown: '# New rules' },
+    })
+  })
+})

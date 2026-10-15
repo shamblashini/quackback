@@ -1153,6 +1153,8 @@
   "portal.reports.empty": "Aucun signalement pour l'instant.",
   "portal.reports.emptyFiltered": "Aucun signalement avec ce statut.",
   "portal.reports.loadMore": "Charger plus",
+  "portal.reports.rules.title": "Règles",
+  "portal.reports.backToPortal": "Retour au portail",
   "portal.reports.anonymous": "Anonyme",
   "portal.reports.replies": "{count, plural, one {# réponse} other {# réponses}}",
   "portal.reports.composer.errorSignIn": "Connectez-vous pour faire un signalement",

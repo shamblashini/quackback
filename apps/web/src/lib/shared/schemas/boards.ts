@@ -140,9 +140,22 @@ export const createBoardSchema = z.object({
   preset: boardPresetSchema.default('public'),
 })
 
+/** Longest rules text a report board can carry. */
+export const BOARD_RULES_MAX_LENGTH = 10000
+
+/** Team-editable board settings. Strict so unknown keys are rejected. */
+export const boardSettingsSchema = z
+  .object({
+    roadmapStatusIds: z.array(z.string()).optional(),
+    rulesMarkdown: z.string().max(BOARD_RULES_MAX_LENGTH).optional(),
+  })
+  .strict()
+
 export const updateBoardSchema = z.object({
   name: z.string().min(1, 'Board name is required').max(100),
   description: z.string().max(500).optional(),
+  /** Report boards only: Markdown rules saved to `settings.rulesMarkdown`. */
+  rulesMarkdown: z.string().max(BOARD_RULES_MAX_LENGTH).optional(),
 })
 
 export const deleteBoardSchema = z.object({

@@ -1153,6 +1153,8 @@
   "portal.reports.empty": "Aún no hay reportes.",
   "portal.reports.emptyFiltered": "No hay reportes con este estado.",
   "portal.reports.loadMore": "Cargar más",
+  "portal.reports.rules.title": "Reglas",
+  "portal.reports.backToPortal": "Volver al portal",
   "portal.reports.anonymous": "Anónimo",
   "portal.reports.replies": "{count, plural, one {# respuesta} other {# respuestas}}",
   "portal.reports.composer.errorSignIn": "Inicia sesión para enviar un reporte",

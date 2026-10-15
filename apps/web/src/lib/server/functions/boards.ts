@@ -16,7 +16,12 @@ import {
   updateBoard,
   deleteBoard,
 } from '@/lib/server/domains/boards/board.service'
-import { boardAccessSchema, boardPresetSchema, accessForPreset } from '@/lib/shared/schemas/boards'
+import {
+  boardAccessSchema,
+  boardPresetSchema,
+  boardSettingsSchema,
+  accessForPreset,
+} from '@/lib/shared/schemas/boards'
 import { PERMISSIONS } from '@/lib/shared/permissions'
 import { logger } from '@/lib/server/logger'
 
@@ -48,12 +53,6 @@ const createBoardSchema = z.object({
 const getBoardSchema = z.object({
   id: z.string(),
 })
-
-const boardSettingsSchema = z
-  .object({
-    roadmapStatusIds: z.array(z.string()).optional(),
-  })
-  .strict()
 
 const updateBoardSchema = z.object({
   id: z.string(),

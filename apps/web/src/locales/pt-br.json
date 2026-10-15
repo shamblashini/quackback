@@ -1153,6 +1153,8 @@
   "portal.reports.empty": "Ainda não há denúncias.",
   "portal.reports.emptyFiltered": "Nenhuma denúncia com este status.",
   "portal.reports.loadMore": "Carregar mais",
+  "portal.reports.rules.title": "Regras",
+  "portal.reports.backToPortal": "Voltar ao portal",
   "portal.reports.anonymous": "Anônimo",
   "portal.reports.replies": "{count, plural, one {# resposta} other {# respostas}}",
   "portal.reports.composer.errorSignIn": "Entre para enviar uma denúncia",

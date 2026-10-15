@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/form'
 import { useNavigate } from '@tanstack/react-router'
 import { useUpdateBoard } from '@/lib/client/mutations'
+import { resolveBoardKind, type BoardAccess } from '@/lib/shared/db-types'
 import type { BoardId } from '@quackback/ids'
 
 interface Board {
@@ -20,6 +22,9 @@ interface Board {
   name: string
   slug: string
   description: string | null
+  /** Decides whether this is a report board (which carries rules). */
+  access?: BoardAccess | null
+  settings?: { rulesMarkdown?: string } | null
 }
 
 interface BoardGeneralFormProps {
@@ -30,11 +35,15 @@ export function BoardGeneralForm({ board }: BoardGeneralFormProps) {
   const mutation = useUpdateBoard()
   const navigate = useNavigate()
 
+  const isReportBoard = resolveBoardKind(board.access ?? undefined) === 'reports'
+  const savedRules = board.settings?.rulesMarkdown ?? ''
+
   const form = useForm<UpdateBoardInput>({
     resolver: standardSchemaResolver(updateBoardSchema),
     defaultValues: {
       name: board.name,
       description: board.description || '',
+      rulesMarkdown: savedRules,
     },
   })
 
@@ -46,6 +55,8 @@ export function BoardGeneralForm({ board }: BoardGeneralFormProps) {
         id: board.id,
         name: data.name,
         description: data.description,
+        // Only the rules key: the server merges it into the other settings.
+        ...(isReportBoard && { settings: { rulesMarkdown: data.rulesMarkdown ?? '' } }),
       },
       {
         onSuccess: (updated) => {
@@ -63,7 +74,11 @@ export function BoardGeneralForm({ board }: BoardGeneralFormProps) {
   }
 
   const saveIfChanged = form.handleSubmit((data) => {
-    if (data.name !== board.name || (data.description ?? '') !== (board.description ?? '')) {
+    if (
+      data.name !== board.name ||
+      (data.description ?? '') !== (board.description ?? '') ||
+      (isReportBoard && (data.rulesMarkdown ?? '') !== savedRules)
+    ) {
       onSubmit(data)
     }
   })
@@ -98,6 +113,25 @@ export function BoardGeneralForm({ board }: BoardGeneralFormProps) {
             </FormItem>
           )}
         />
+
+        {isReportBoard && (
+          <FormField
+            control={form.control}
+            name="rulesMarkdown"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Report rules</FormLabel>
+                <FormControl>
+                  <Textarea rows={8} className="font-mono text-sm" {...field} />
+                </FormControl>
+                <FormDescription>
+                  Shown next to the report form and on every report. Markdown supported.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
       </form>
     </Form>
   )

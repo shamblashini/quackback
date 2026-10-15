@@ -12,6 +12,11 @@ import { portalQueries } from '@/lib/client/queries/portal'
 import { reportsQueries } from '@/lib/client/queries/reports'
 import { isProductEnabled } from '@/lib/shared/types/settings'
 import { cn, getInitials } from '@/lib/shared/utils'
+import {
+  ReportRulesCard,
+  ReportRulesCollapsible,
+  collectReportRules,
+} from '@/components/public/reports/report-rules'
 import type { ReportListItem } from '@/lib/server/functions/reports'
 
 const searchSchema = z.object({
@@ -70,42 +75,66 @@ function ReportsPage() {
 
   const user = session?.user ? { name: session.user.name, email: session.user.email } : null
 
+  const rules = collectReportRules(page.boards)
+
   return (
-    <div className="mx-auto max-w-3xl w-full px-4 sm:px-6 py-8">
-      <div className="mb-6 animate-in fade-in duration-200 fill-mode-backwards">
-        <h1 className="text-3xl font-bold mb-2">
-          <FormattedMessage id="portal.reports.title" defaultMessage="Reports" />
-        </h1>
-        <p className="text-muted-foreground">
-          <FormattedMessage
-            id="portal.reports.subtitle"
-            defaultMessage="Report a problem to the moderation team and talk it through with them."
+    <div
+      className={cn(
+        'mx-auto w-full px-4 sm:px-6 py-8',
+        rules.length > 0 ? 'max-w-6xl' : 'max-w-3xl'
+      )}
+    >
+      <div
+        className={cn(
+          rules.length > 0 && 'lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8'
+        )}
+      >
+        <div className="min-w-0">
+          <div className="mb-6 animate-in fade-in duration-200 fill-mode-backwards">
+            <h1 className="text-3xl font-bold mb-2">
+              <FormattedMessage id="portal.reports.title" defaultMessage="Reports" />
+            </h1>
+            <p className="text-muted-foreground">
+              <FormattedMessage
+                id="portal.reports.subtitle"
+                defaultMessage="Report a problem to the moderation team and talk it through with them."
+              />
+            </p>
+            <p className="mt-3 flex items-start gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+              <EyeIcon className="mt-0.5 size-4 shrink-0" />
+              <FormattedMessage
+                id="portal.reports.transparencyNote"
+                defaultMessage="Every report and the team's replies are public, so the whole community can see how each one was handled. Only the reporter and the team can reply."
+              />
+            </p>
+          </div>
+
+          {/* Small screens: the rules sit above the composer, folded away. */}
+          <ReportRulesCollapsible sections={rules} className="mb-6 lg:hidden" />
+
+          <FeedbackHeader
+            variant="report"
+            workspaceName={workspaceName}
+            boards={page.boards}
+            defaultBoardId={page.boards.length === 1 ? page.boards[0].id : undefined}
+            user={user}
+            boardPermissions={page.boardPermissions}
+            onPostCreated={() => {
+              void queryClient.invalidateQueries({ queryKey: ['portal', 'reports'] })
+            }}
           />
-        </p>
-        <p className="mt-3 flex items-start gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-          <EyeIcon className="mt-0.5 size-4 shrink-0" />
-          <FormattedMessage
-            id="portal.reports.transparencyNote"
-            defaultMessage="Every report and the team's replies are public, so the whole community can see how each one was handled. Only the reporter and the team can reply."
-          />
-        </p>
+
+          <StatusFilter statuses={statuses} active={status} />
+
+          <ReportList status={status} statuses={statuses} />
+        </div>
+
+        {rules.length > 0 && (
+          <div className="hidden lg:block">
+            <ReportRulesCard sections={rules} sticky />
+          </div>
+        )}
       </div>
-
-      <FeedbackHeader
-        variant="report"
-        workspaceName={workspaceName}
-        boards={page.boards}
-        defaultBoardId={page.boards.length === 1 ? page.boards[0].id : undefined}
-        user={user}
-        boardPermissions={page.boardPermissions}
-        onPostCreated={() => {
-          void queryClient.invalidateQueries({ queryKey: ['portal', 'reports'] })
-        }}
-      />
-
-      <StatusFilter statuses={statuses} active={status} />
-
-      <ReportList status={status} statuses={statuses} />
     </div>
   )
 }

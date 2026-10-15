@@ -12,8 +12,12 @@ import type {
   PortalNavItemType,
 } from '@/lib/shared/types/settings'
 
-/** Built-in tab types (everything except admin-defined links). */
-export type PortalBuiltInNavType = Exclude<PortalNavItemType, 'link'>
+/**
+ * Built-in tab types (everything except admin-defined links). `reports` is
+ * stored-config legacy only: Reports is a red header button, not a tab, so it
+ * is skipped when resolving and never offered in the nav editor.
+ */
+export type PortalBuiltInNavType = Exclude<PortalNavItemType, 'link' | 'reports'>
 
 interface BuiltInNavDefinition {
   to: string
@@ -32,8 +36,14 @@ const BUILT_IN_NAV_ITEMS: Record<PortalBuiltInNavType, BuiltInNavDefinition> = {
   help: { to: '/hc', messageId: 'portal.header.nav.help', defaultMessage: 'Help Center' },
   support: { to: '/support', messageId: 'portal.header.nav.support', defaultMessage: 'Support' },
   status: { to: '/status', messageId: 'portal.header.nav.status', defaultMessage: 'Status' },
-  reports: { to: '/reports', messageId: 'portal.header.nav.reports', defaultMessage: 'Reports' },
 }
+
+/** The header's Reports button (not a tab). */
+export const REPORTS_NAV = {
+  to: '/reports',
+  messageId: 'portal.header.nav.reports',
+  defaultMessage: 'Reports',
+} as const
 
 /** Default order, matching the nav before it became configurable. */
 export const DEFAULT_NAV_ORDER: readonly PortalBuiltInNavType[] = [
@@ -43,7 +53,6 @@ export const DEFAULT_NAV_ORDER: readonly PortalBuiltInNavType[] = [
   'help',
   'support',
   'status',
-  'reports',
 ]
 
 /**
@@ -59,9 +68,6 @@ export interface PortalNavGates {
   help: boolean
   support: boolean
   status: boolean
-  /** Optional: only the live portal header knows whether the viewer can see a
-   *  report board. Absent reads as off. */
-  reports?: boolean
 }
 
 /** A nav item resolved for rendering. */
@@ -131,6 +137,9 @@ export function resolvePortalNavItems(
       continue
     }
 
+    // Reports left the tab row (it is a header button now); a config saved
+    // while it was a tab may still carry it.
+    if (item.type === 'reports') continue
     seenTypes.add(item.type)
     // Feedback is always on: a stored enabled:false is ignored. Other built-ins
     // still honor their visibility switch (and every built-in still needs its gate).
@@ -154,7 +163,7 @@ export function resolvePortalNavItems(
  */
 export function seedNavEditorItems(nav?: PortalNavConfig | null): PortalNavItemConfig[] {
   const items: PortalNavItemConfig[] = nav?.items?.length
-    ? nav.items.map((item) => ({ ...item }))
+    ? nav.items.filter((item) => item.type !== 'reports').map((item) => ({ ...item }))
     : []
   const seenTypes = new Set(items.filter((i) => i.type !== 'link').map((i) => i.type))
   for (const type of DEFAULT_NAV_ORDER) {

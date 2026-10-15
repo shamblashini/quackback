@@ -1153,6 +1153,8 @@
   "portal.reports.empty": "Nog geen meldingen.",
   "portal.reports.emptyFiltered": "Geen meldingen met deze status.",
   "portal.reports.loadMore": "Meer laden",
+  "portal.reports.rules.title": "Regels",
+  "portal.reports.backToPortal": "Terug naar het portaal",
   "portal.reports.anonymous": "Anoniem",
   "portal.reports.replies": "{count, plural, one {# reactie} other {# reacties}}",
   "portal.reports.composer.errorSignIn": "Log in om een melding te maken",

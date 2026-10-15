@@ -9,13 +9,7 @@ import { useSessionContext, useWorkspaceSettings } from '@/lib/client/hooks/use-
  * The portal's top-level pages this viewer can open, in nav order: the
  * header's tabs, and the places an empty page can point visitors to.
  */
-export function usePortalNavItems({
-  hasReportBoards = false,
-}: {
-  /** Whether this viewer can see a report board; only the portal layout's
-   *  loader knows, so callers without it leave the Reports tab off. */
-  hasReportBoards?: boolean
-} = {}): PortalNavItem[] {
+export function usePortalNavItems(): PortalNavItem[] {
   const session = useSessionContext()
   const settings = useWorkspaceSettings()
   // The unsaved navigation from the admin branding preview (undefined outside
@@ -42,7 +36,6 @@ export function usePortalNavItems({
       help: isProductEnabled(flags, 'helpCenter'),
       support: isPortalSupportSurfaceEnabled(flags, settings?.portalConfig),
       status: statusEnabled,
-      reports: feedbackEnabled && hasReportBoards,
     },
     previewNav ?? settings?.portalConfig?.nav
   )

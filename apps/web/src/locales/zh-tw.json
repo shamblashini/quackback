@@ -1153,6 +1153,8 @@
   "portal.reports.empty": "尚無檢舉。",
   "portal.reports.emptyFiltered": "沒有此狀態的檢舉。",
   "portal.reports.loadMore": "載入更多",
+  "portal.reports.rules.title": "規則",
+  "portal.reports.backToPortal": "返回入口網站",
   "portal.reports.anonymous": "匿名",
   "portal.reports.replies": "{count, plural, other {# 則回覆}}",
   "portal.reports.composer.errorSignIn": "請登入後提交檢舉",

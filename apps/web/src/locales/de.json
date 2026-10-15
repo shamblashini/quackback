@@ -1153,6 +1153,8 @@
   "portal.reports.empty": "Noch keine Meldungen.",
   "portal.reports.emptyFiltered": "Keine Meldungen mit diesem Status.",
   "portal.reports.loadMore": "Mehr laden",
+  "portal.reports.rules.title": "Regeln",
+  "portal.reports.backToPortal": "Zurück zum Portal",
   "portal.reports.anonymous": "Anonym",
   "portal.reports.replies": "{count, plural, one {# Antwort} other {# Antworten}}",
   "portal.reports.composer.errorSignIn": "Bitte melde dich an, um eine Meldung einzureichen",

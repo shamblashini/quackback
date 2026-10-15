@@ -3,6 +3,7 @@ import {
   redirect,
   Outlet,
   retainSearchParams,
+  useMatches,
   useRouteContext,
 } from '@tanstack/react-router'
 import { lazy, Suspense } from 'react'
@@ -16,6 +17,7 @@ import { PortalPermissionsProvider } from '@/lib/client/hooks/use-portal-permiss
 import { isTeamMember } from '@/lib/shared/roles'
 import type { PermissionKey } from '@/lib/shared/permissions'
 import { PortalHeader } from '@/components/public/portal-header'
+import { resolvePortalHeaderVariant } from '@/components/public/portal-header-variant'
 import { AuthPopoverProvider } from '@/components/auth/auth-popover-context'
 import { AuthDialog } from '@/components/auth/auth-dialog'
 import { FileViewerProvider, scrollToMessage } from '@/components/shared/files/file-viewer-context'
@@ -222,8 +224,8 @@ export const Route = createFileRoute('/_portal')({
     // gating; the server still enforces every mutation) and only for team
     // roles — end users and visitors skip the RPC entirely. Both were already
     // started above, in parallel with the access check.
-    // The header's Reports tab is gated on whether the viewer can see a report
-    // board. Resolved here so SSR renders the tab instead of popping it in.
+    // The header's Reports button is gated on whether the viewer can see a report
+    // board. Resolved here so SSR renders the button instead of popping it in.
     const reportsGatePromise = isProductEnabled(settings?.featureFlags, 'feedback')
       ? context.queryClient.ensureQueryData(reportsQueries.hasReportBoards()).catch(() => false)
       : Promise.resolve(false)
@@ -347,6 +349,15 @@ function PortalLayout() {
     select: ({ session }) => !!session?.user && session.user.principalType !== 'anonymous',
   })
 
+  // Reports mode: the reports page and any report post's page get their own
+  // header. Selected as a string so the layout re-renders only on a switch.
+  const headerVariant = useMatches({
+    select: (matches) =>
+      resolvePortalHeaderVariant(
+        matches.map((m) => ({ routeId: m.routeId, loaderData: m.loaderData }))
+      ),
+  })
+
   // Access denied: render the in-place sign-in wall (a normal 200 page). The
   // gate is self-contained (it mounts its own PortalIntlProvider).
   if (loaderData.gate) {
@@ -420,6 +431,7 @@ function PortalLayout() {
                 // always forces one — hide it there.
                 showThemeToggle={themeMode === 'user' && !preview}
                 hasReportBoards={hasReportBoards}
+                variant={headerVariant}
               />
               <main className="flex-1 w-full flex flex-col">
                 <FileViewerProvider onJumpToMessage={scrollToMessage}>

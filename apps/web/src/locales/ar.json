@@ -1153,6 +1153,8 @@
   "portal.reports.empty": "لا توجد بلاغات بعد.",
   "portal.reports.emptyFiltered": "لا توجد بلاغات بهذه الحالة.",
   "portal.reports.loadMore": "تحميل المزيد",
+  "portal.reports.rules.title": "القواعد",
+  "portal.reports.backToPortal": "العودة إلى البوابة",
   "portal.reports.anonymous": "مجهول",
   "portal.reports.replies": "{count, plural, zero {لا ردود} one {رد واحد} two {ردّان} few {# ردود} many {# ردًا} other {# رد}}",
   "portal.reports.composer.errorSignIn": "يرجى تسجيل الدخول لتقديم بلاغ",

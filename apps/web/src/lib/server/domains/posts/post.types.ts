@@ -289,6 +289,8 @@ export interface PublicPostDetail {
    * strips it before serializing to the client (segment ids must not leak).
    */
   boardAccess: BoardAccess
+  /** The board's rules text (Markdown); only report boards set it. */
+  boardRulesMarkdown: string | null
   tags: Array<{ id: string; name: string; color: string }>
   /**
    * First page of root comments (each carrying its full reply subtree).

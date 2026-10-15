@@ -2,7 +2,8 @@ import { nameInitial } from '@/lib/shared/utils/initial'
 import { memo, useEffect, useState } from 'react'
 import { Link, useRouter, useRouterState, useRouteContext } from '@tanstack/react-router'
 import { useTheme } from 'next-themes'
-import type { PortalNavItem } from './portal-header-nav'
+import { REPORTS_NAV, type PortalNavItem } from './portal-header-nav'
+import type { PortalHeaderVariant } from './portal-header-variant'
 import { usePortalNavItems } from './use-portal-nav-items'
 import { isPortalSupportSurfaceEnabled } from '@/lib/shared/support-surfaces'
 import { useIntl, FormattedMessage } from 'react-intl'
@@ -26,7 +27,9 @@ import { UserStatsBar } from '@/components/shared/user-stats'
 import {
   ArrowRightStartOnRectangleIcon,
   Cog6ToothIcon,
+  ArrowLeftIcon,
   ComputerDesktopIcon,
+  FlagIcon,
   MoonIcon,
   ShieldCheckIcon,
   SunIcon,
@@ -58,8 +61,10 @@ interface PortalHeaderProps {
   }
   /** Whether to show the theme toggle (hidden when admin forces a specific theme) */
   showThemeToggle?: boolean
-  /** Whether the viewer can see a report board — gates the Reports tab. */
+  /** Whether the viewer can see a report board — gates the Reports button. */
   hasReportBoards?: boolean
+  /** 'reports' swaps the tabs for a way back to the portal and adds a red accent. */
+  variant?: PortalHeaderVariant
 }
 
 export function PortalHeader({
@@ -69,6 +74,7 @@ export function PortalHeader({
   initialUserData,
   showThemeToggle = true,
   hasReportBoards = false,
+  variant = 'default',
 }: PortalHeaderProps) {
   const intl = useIntl()
   const router = useRouter()
@@ -83,7 +89,7 @@ export function PortalHeader({
     select: (context) => context.registeredAuthProviders,
   })
 
-  const navItems = usePortalNavItems({ hasReportBoards })
+  const navItems = usePortalNavItems()
   const supportEnabled = isPortalSupportSurfaceEnabled(
     settings?.featureFlags,
     settings?.portalConfig
@@ -189,10 +195,35 @@ export function PortalHeader({
   // Auth/admin buttons. Plain elements rather than a component declared in
   // here: a component declared in render is a new type each time, so every
   // render of the header would tear these menus down and build them again.
+  const inReportsMode = variant === 'reports'
+
   const authButtons = (
     <div className="flex items-center">
       {/* Theme Toggle (when admin allows user choice) */}
       {showThemeToggle && <ThemeToggle />}
+
+      {/* Reports button: red, for everyone, whenever a report board is visible.
+          Hidden inside reports mode, where the viewer is already there. */}
+      {hasReportBoards && !inReportsMode && (
+        <Button
+          variant="destructive"
+          size="sm"
+          asChild
+          className="ms-1 me-2"
+          data-testid="portal-reports-button"
+        >
+          <Link to={REPORTS_NAV.to}>
+            <FlagIcon className="h-4 w-4 sm:me-2" />
+            {/* Icon-only on phones to keep the compact header on one line. */}
+            <span className="sr-only sm:not-sr-only">
+              <FormattedMessage
+                id={REPORTS_NAV.messageId}
+                defaultMessage={REPORTS_NAV.defaultMessage}
+              />
+            </span>
+          </Link>
+        </Button>
+      )}
 
       {/* Admin Button (visible for team members) */}
       {canAccessAdmin && (
@@ -286,7 +317,13 @@ export function PortalHeader({
 
   // Two-row layout: Logo + Auth on top, Navigation below
   return (
-    <div className="portal-header w-full py-2 border-b border-[var(--header-border)] bg-[var(--header-background)] shadow-sm">
+    <div
+      data-variant={variant}
+      className={cn(
+        'portal-header w-full py-2 border-b border-[var(--header-border)] bg-[var(--header-background)] shadow-sm',
+        inReportsMode && 'border-t-4 border-t-destructive'
+      )}
+    >
       {/* Row 1: Logo + Name + Auth */}
       <div>
         <div className="max-w-6xl mx-auto w-full px-4 sm:px-6">
@@ -318,11 +355,26 @@ export function PortalHeader({
       {/* Row 2: Navigation */}
       <div className="mt-2 overflow-x-auto scrollbar-none">
         <div className="max-w-6xl mx-auto w-full px-4 sm:px-6">
-          <Navigation
-            navItems={navItems}
-            helpHeaderLinks={settings?.helpCenterConfig?.headerLinks}
-            supportUnreadTotal={supportUnreadTotal}
-          />
+          {inReportsMode ? (
+            <nav className="portal-nav flex items-center whitespace-nowrap">
+              <Link
+                to="/"
+                className="portal-nav__back inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 [border-radius:calc(var(--radius)*0.8)]"
+              >
+                <ArrowLeftIcon className="h-4 w-4 rtl:rotate-180" />
+                <FormattedMessage
+                  id="portal.reports.backToPortal"
+                  defaultMessage="Back to portal"
+                />
+              </Link>
+            </nav>
+          ) : (
+            <Navigation
+              navItems={navItems}
+              helpHeaderLinks={settings?.helpCenterConfig?.headerLinks}
+              supportUnreadTotal={supportUnreadTotal}
+            />
+          )}
         </div>
       </div>
     </div>

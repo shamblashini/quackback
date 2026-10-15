@@ -1153,6 +1153,8 @@
   "portal.reports.empty": "Brak zgłoszeń.",
   "portal.reports.emptyFiltered": "Brak zgłoszeń o tym statusie.",
   "portal.reports.loadMore": "Wczytaj więcej",
+  "portal.reports.rules.title": "Zasady",
+  "portal.reports.backToPortal": "Wróć do portalu",
   "portal.reports.anonymous": "Anonim",
   "portal.reports.replies": "{count, plural, one {# odpowiedź} few {# odpowiedzi} many {# odpowiedzi} other {# odpowiedzi}}",
   "portal.reports.composer.errorSignIn": "Zaloguj się, aby wysłać zgłoszenie",

@@ -62,20 +62,24 @@ describe('resolvePortalNavItems (no config = legacy defaults)', () => {
   })
 })
 
-describe('resolvePortalNavItems (reports tab)', () => {
-  it('stays hidden until the viewer can see a report board', () => {
+describe('resolvePortalNavItems (reports is a header button, not a tab)', () => {
+  it('never renders a reports tab', () => {
     expect(paths(resolvePortalNavItems(gates()))).not.toContain('/reports')
-    expect(paths(resolvePortalNavItems(gates({ reports: true })))).toEqual([
-      '/',
-      '/roadmap',
-      '/changelog',
-      '/reports',
-    ])
   })
 
-  it('is appended to a saved nav config that predates it', () => {
-    const nav: PortalNavConfig = { items: [{ id: 'feedback', type: 'feedback' }] }
-    expect(paths(resolvePortalNavItems(gates({ reports: true }), nav))).toContain('/reports')
+  it('skips a legacy reports entry in a saved nav config', () => {
+    const nav = {
+      items: [
+        { id: 'feedback', type: 'feedback' },
+        { id: 'reports', type: 'reports' },
+      ],
+    } as PortalNavConfig
+    expect(paths(resolvePortalNavItems(gates(), nav))).not.toContain('/reports')
+  })
+
+  it('does not offer reports in the nav editor, even from a saved config', () => {
+    const nav = { items: [{ id: 'reports', type: 'reports' }] } as PortalNavConfig
+    expect(seedNavEditorItems(nav).map((i) => i.type)).not.toContain('reports')
   })
 })
 
@@ -210,7 +214,6 @@ describe('seedNavEditorItems', () => {
       'help',
       'support',
       'status',
-      'reports',
     ])
   })
 
@@ -230,7 +233,6 @@ describe('seedNavEditorItems', () => {
       'help',
       'support',
       'status',
-      'reports',
     ])
   })
 

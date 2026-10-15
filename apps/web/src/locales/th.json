@@ -1381,6 +1381,8 @@
   "portal.reports.empty": "ยังไม่มีรายงาน",
   "portal.reports.emptyFiltered": "ไม่มีรายงานในสถานะนี้",
   "portal.reports.loadMore": "โหลดเพิ่มเติม",
+  "portal.reports.rules.title": "กฎ",
+  "portal.reports.backToPortal": "กลับไปที่พอร์ทัล",
   "portal.reports.anonymous": "ไม่ระบุชื่อ",
   "portal.reports.replies": "{count, plural, other {# การตอบกลับ}}",
   "portal.reports.composer.errorSignIn": "โปรดเข้าสู่ระบบเพื่อส่งรายงาน",

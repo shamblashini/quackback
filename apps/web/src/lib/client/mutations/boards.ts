@@ -102,7 +102,9 @@ export function useUpdateBoard() {
             ...board,
             ...(input.name !== undefined && { name: input.name }),
             ...(input.description !== undefined && { description: input.description }),
-            ...(optimisticSettings !== undefined && { settings: optimisticSettings }),
+            ...(optimisticSettings !== undefined && {
+              settings: { ...board.settings, ...optimisticSettings },
+            }),
             updatedAt: new Date(),
           }
         })
@@ -114,7 +116,9 @@ export function useUpdateBoard() {
           ...previousDetail,
           ...(input.name !== undefined && { name: input.name }),
           ...(input.description !== undefined && { description: input.description }),
-          ...(optimisticSettings !== undefined && { settings: optimisticSettings }),
+          ...(optimisticSettings !== undefined && {
+            settings: { ...previousDetail.settings, ...optimisticSettings },
+          }),
           updatedAt: new Date(),
         })
       }

@@ -101,6 +101,8 @@ export interface PublicPostDetailView {
   /** The board's purpose. Undefined on legacy/cached payloads — treat as
    *  `'feedback'`. A `'reports'` board's posts link back to /reports. */
   boardKind?: BoardKind
+  /** The board's rules text (Markdown); set on report boards only. */
+  boardRulesMarkdown?: string | null
   /** Merge/deduplication: info about canonical post if this is a merged duplicate */
   mergeInfo?: {
     canonicalPostId: string

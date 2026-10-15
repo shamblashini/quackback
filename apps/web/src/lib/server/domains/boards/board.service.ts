@@ -235,7 +235,17 @@ export async function updateBoard(id: BoardId, input: UpdateBoardInput): Promise
   if (input.name !== undefined) updateData.name = input.name.trim()
   if (input.description !== undefined) updateData.description = input.description?.trim() || null
   if (slug !== existingBoard.slug) updateData.slug = slug
-  if (input.settings !== undefined) updateData.settings = input.settings
+  if (input.settings !== undefined) {
+    // Merge into the stored settings: each settings form saves only its own
+    // keys, so a replace would wipe the others (rules vs. roadmap statuses).
+    const merged: BoardSettings = {
+      ...((existingBoard.settings ?? {}) as BoardSettings),
+      ...input.settings,
+    }
+    // Blank rules mean "no rules": drop the key rather than store whitespace.
+    if (!merged.rulesMarkdown?.trim()) delete merged.rulesMarkdown
+    updateData.settings = merged
+  }
 
   // Update the board
   const [updatedBoard] = await db

@@ -1153,6 +1153,8 @@
   "portal.reports.empty": "Скарг ще немає.",
   "portal.reports.emptyFiltered": "Немає скарг із цим статусом.",
   "portal.reports.loadMore": "Показати ще",
+  "portal.reports.rules.title": "Правила",
+  "portal.reports.backToPortal": "Повернутися на портал",
   "portal.reports.anonymous": "Анонім",
   "portal.reports.replies": "{count, plural, one {# відповідь} few {# відповіді} many {# відповідей} other {# відповіді}}",
   "portal.reports.composer.errorSignIn": "Увійдіть, щоб подати скаргу",

@@ -110,3 +110,35 @@ describe('updateBoard — access isolation (G2)', () => {
     expect(capturedSet).toHaveProperty('description', 'desc')
   })
 })
+
+describe('updateBoard — settings merge', () => {
+  it('keeps the other settings keys when only the rules are saved', async () => {
+    hoisted.mockedFindFirst.mockResolvedValue({
+      ...EXISTING_BOARD,
+      settings: { roadmapStatusIds: ['status_1'] },
+    })
+    await updateBoard(BOARD_ID, { settings: { rulesMarkdown: '# Rules' } })
+    expect(capturedSet.settings).toEqual({
+      roadmapStatusIds: ['status_1'],
+      rulesMarkdown: '# Rules',
+    })
+  })
+
+  it('keeps the rules when only the roadmap statuses are saved', async () => {
+    hoisted.mockedFindFirst.mockResolvedValue({
+      ...EXISTING_BOARD,
+      settings: { rulesMarkdown: '# Rules' },
+    })
+    await updateBoard(BOARD_ID, { settings: { roadmapStatusIds: [] } })
+    expect(capturedSet.settings).toEqual({ rulesMarkdown: '# Rules', roadmapStatusIds: [] })
+  })
+
+  it('drops the rules key when the rules are blanked', async () => {
+    hoisted.mockedFindFirst.mockResolvedValue({
+      ...EXISTING_BOARD,
+      settings: { rulesMarkdown: '# Rules' },
+    })
+    await updateBoard(BOARD_ID, { settings: { rulesMarkdown: '  ' } })
+    expect(capturedSet.settings).toEqual({})
+  })
+})
