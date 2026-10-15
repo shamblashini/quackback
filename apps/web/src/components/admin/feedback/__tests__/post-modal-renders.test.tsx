@@ -43,6 +43,9 @@ vi.mock('@/components/public/post-detail/comments-section', () => ({
   CommentsSection: () => null,
   CommentsSectionSkeleton: () => null,
 }))
+vi.mock('@/components/public/post-detail/custom-field-answers', () => ({
+  CustomFieldAnswers: () => null,
+}))
 vi.mock('@/components/admin/feedback/merge-section', () => ({
   MergeActions: () => null,
   MergeInfoBanner: () => null,
