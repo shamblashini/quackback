@@ -19,11 +19,13 @@ import {
  *   - 'private' → view/vote/comment/submit=team
  *   - 'reports' → a public report board: anyone views, sign-in to file or
  *                 reply, nobody votes, only the reporter and team reply
+ *   - 'private-reports' → like 'reports', but only the reporter and the team
+ *                 can read a report (view=team; see report-privacy.ts)
  *
  * Finer-grained access (segments, asymmetric tiers) is set after create
  * via the Access tab — admin-only and audited.
  */
-export const boardPresetSchema = z.enum(['public', 'private', 'reports'])
+export const boardPresetSchema = z.enum(['public', 'private', 'reports', 'private-reports'])
 export type BoardPreset = z.infer<typeof boardPresetSchema>
 
 /**
@@ -90,6 +92,9 @@ export function accessForPreset(preset: BoardPreset): BoardAccess {
       moderation: { anonPosts: 'inherit', signedPosts: 'inherit', comments: 'inherit' },
       replyPolicy: 'author-only',
     }
+  }
+  if (preset === 'private-reports') {
+    return { ...accessForPreset('reports'), view: 'team' }
   }
   if (preset === 'private') {
     return {
@@ -316,21 +321,27 @@ export const boardAccessSchema = z
         }
       }
     }
-    if (ACCESS_TIER_RANK[val.vote] < ACCESS_TIER_RANK[val.view]) {
+    // A private report board (kind reports + view team) is the one place a
+    // contribution tier may be MORE open than view: signed-in accounts file and
+    // reply on it while the policy layer shows each of them only their own
+    // reports. Only 'authenticated' gets the exemption.
+    const privateReport = val.kind === 'reports' && val.view === 'team'
+    const exempt = (tier: string) => privateReport && tier === 'authenticated'
+    if (ACCESS_TIER_RANK[val.vote] < ACCESS_TIER_RANK[val.view] && !exempt(val.vote)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['vote'],
         message: 'Vote tier cannot be more permissive than view.',
       })
     }
-    if (ACCESS_TIER_RANK[val.comment] < ACCESS_TIER_RANK[val.view]) {
+    if (ACCESS_TIER_RANK[val.comment] < ACCESS_TIER_RANK[val.view] && !exempt(val.comment)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['comment'],
         message: 'Comment tier cannot be more permissive than view.',
       })
     }
-    if (ACCESS_TIER_RANK[val.submit] < ACCESS_TIER_RANK[val.view]) {
+    if (ACCESS_TIER_RANK[val.submit] < ACCESS_TIER_RANK[val.view] && !exempt(val.submit)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['submit'],

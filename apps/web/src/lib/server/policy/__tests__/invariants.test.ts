@@ -307,11 +307,11 @@ describe('postViewFilter — SQL shape', () => {
   it('non-team predicate maps principalId through typeid → uuid binding', () => {
     const { params } = toQueryShape(postViewFilter(actors.user))
     // The principal id is passed through the typeid column mapper, which
-    // converts both own-pending and own-test visibility bindings to the same UUID.
+    // converts the own-pending, own-test and private-report-author bindings to the same UUID.
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
     const flat = params.flat(2).filter((p) => typeof p === 'string') as string[]
     const uuids = flat.filter((p) => uuidRe.test(p))
-    expect(uuids).toEqual([toUuid(PRINCIPAL_USER), toUuid(PRINCIPAL_USER)])
+    expect(uuids).toEqual([toUuid(PRINCIPAL_USER), toUuid(PRINCIPAL_USER), toUuid(PRINCIPAL_USER)])
     expect(flat).not.toContain(PRINCIPAL_USER)
   })
 

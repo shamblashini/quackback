@@ -20,7 +20,8 @@ import type { PrincipalId } from '@quackback/ids'
 import { allowDecision, denyDecision, isTeamActor, type Actor, type Decision } from './types'
 import { can } from './authorize'
 import { PERMISSIONS } from '@/lib/shared/permissions'
-import { canViewBoard, boardViewFilter } from './boards'
+import { canViewBoard, boardViewFilter, privateReportAuthorCondition } from './boards'
+import { isPrivateReportAccess } from '@/lib/shared/report-privacy'
 import { tierAllows } from './access'
 import { resolveWorkspaceModeration, type ModerationAxis } from '@/lib/shared/moderation-policy'
 import { normalizeBoardAccess } from '@/lib/shared/schemas/boards'
@@ -109,6 +110,17 @@ export function canViewPost(actor: Actor, post: PostShape, board: BoardShape): D
     return post.moderationState === 'deleted' ? denyDecision('Post was removed') : allowDecision()
   }
 
+  // Private report board: the reporter sees only the reports they filed. The
+  // principal guard matters for the same reason as the own-pending hatch below:
+  // without it an actor with no principal would match every post whose author is
+  // null.
+  if (
+    isPrivateReportAccess(normalizeBoardAccess(board.access)) &&
+    !(actor.principalId && post.principalId === actor.principalId)
+  ) {
+    return denyDecision('Post is not visible')
+  }
+
   if (post.moderationState === 'published') return allowDecision()
   if (
     post.moderationState === 'pending' &&
@@ -140,6 +152,7 @@ export function postViewFilter(actor: Actor): SQL {
       : sql`false`
   return and(
     boardViewFilter(actor),
+    privateReportAuthorCondition(actor, posts.principalId),
     or(eq(posts.moderationState, 'published'), ownPending),
     testVisibility
   )!
@@ -368,15 +381,23 @@ export function boardCapabilitiesForActor(
   // it is a per-post concern, not a board capability. On an author-only board a
   // non-team user CAN still reply — on their own post — so the board-level
   // answer stays tier-based and the per-post truth comes from canCommentOnPost.
-  // `kind` goes too: a report board forces the author-only policy on through it.
-  const { replyPolicy: _replyPolicy, kind: _kind, ...commentAccess } = board.access
+  // `kind` stays: a report board forces author-only on through it, which the
+  // probe post below satisfies by being authored by the actor.
+  const { replyPolicy: _replyPolicy, ...commentAccess } = board.access
   // ...but the account requirement IS board-level: no anonymous viewer can
   // reply anywhere on a report board, so it is applied back on here.
   const canComment =
     !reportNeedsAccount(actor, board.access) &&
     canCreateComment(
       actor,
-      { moderationState: 'published', principalId: null, isCommentsLocked: false, isMerged: false },
+      {
+        moderationState: 'published',
+        // Own principal, so a report board (author-only; reporter-only on a
+        // private one) reads as commentable for the reporter. Inert elsewhere.
+        principalId: actor.principalId,
+        isCommentsLocked: false,
+        isMerged: false,
+      },
       { access: commentAccess },
       undefined
     ).allowed

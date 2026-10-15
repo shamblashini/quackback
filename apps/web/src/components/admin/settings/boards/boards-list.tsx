@@ -2,6 +2,7 @@ import { ChatBubbleLeftIcon, LockClosedIcon } from '@heroicons/react/24/solid'
 import { Badge } from '@/components/ui/badge'
 import { RowIcon, SettingsList, SettingsListRow } from '@/components/admin/settings/settings-list'
 import { normalizeBoardAccess, presetForAccess } from '@/lib/shared/schemas/boards'
+import { isPrivateReportAccess } from '@/lib/shared/report-privacy'
 import type { BoardAccess } from '@/lib/shared/db-types'
 
 interface BoardRow {
@@ -23,6 +24,14 @@ function BoardAccessBadge({ access }: { access: BoardAccess }) {
   const segments = usesSegments(normalized)
   const teamOnly = presetForAccess(normalized) === 'private' || normalized.view === 'team'
   if (!teamOnly && !segments) return null
+  if (isPrivateReportAccess(normalized)) {
+    return (
+      <Badge size="sm" variant="secondary">
+        <LockClosedIcon />
+        Private reports
+      </Badge>
+    )
+  }
   return (
     <Badge size="sm" variant="secondary">
       {teamOnly ? (

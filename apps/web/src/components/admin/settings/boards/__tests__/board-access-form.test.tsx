@@ -710,7 +710,7 @@ describe('<BoardAccessForm> report board preset', () => {
     vi.useRealTimers()
   })
 
-  const reportSwitch = () => screen.getByRole('switch', { name: /public report board/i })
+  const reportSwitch = () => screen.getByRole('switch', { name: /report board/i })
   const TEAM_ONLY: BoardAccess = {
     view: 'team',
     vote: 'team',
@@ -745,6 +745,65 @@ describe('<BoardAccessForm> report board preset', () => {
     clickTierCell('Vote', 'Everyone')
     flushAutosave()
     expect(mutate).not.toHaveBeenCalled()
+  })
+})
+
+describe('<BoardAccessForm> report board audience', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  const publicTile = () => screen.getByRole('button', { name: /^public \(everyone can read\)/i })
+  const privateTile = () =>
+    screen.getByRole('button', { name: /^private \(only the reporter and the team\)/i })
+
+  it('offers the choice only on a report board', () => {
+    renderForm(PUBLIC_ACCESS)
+    expect(screen.queryByRole('radiogroup')).toBeNull()
+  })
+
+  it('shows a public report board as Public', () => {
+    renderForm(accessForPreset('reports'))
+    expect(publicTile()).toHaveAttribute('aria-pressed', 'true')
+    expect(privateTile()).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('Private sets view to team and keeps filing and replying on signed-in users', () => {
+    renderForm(accessForPreset('reports'))
+    fireEvent.click(privateTile())
+    flushAutosave()
+    expect(mutate).toHaveBeenCalledWith({
+      boardId: BOARD_ID,
+      access: expect.objectContaining({
+        kind: 'reports',
+        view: 'team',
+        vote: 'team',
+        comment: 'authenticated',
+        submit: 'authenticated',
+        replyPolicy: 'author-only',
+      }),
+    })
+  })
+
+  it('Public from Private opens view to everyone again', () => {
+    renderForm(accessForPreset('private-reports'))
+    expect(privateTile()).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(publicTile())
+    flushAutosave()
+    expect(mutate).toHaveBeenCalledWith({
+      boardId: BOARD_ID,
+      access: expect.objectContaining({ view: 'anonymous', comment: 'authenticated' }),
+    })
+  })
+
+  it('lets the Submit and Comment rows stay on Signed-in users below a Team only View', () => {
+    renderForm(accessForPreset('private-reports'))
+    expect(isCellSelected('Submit posts', 'Signed-in users')).toBe(true)
+    expect(screen.getByRole('button', { name: 'Submit posts: Signed-in users' })).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Comment: Signed-in users' })).not.toBeDisabled()
   })
 })
 

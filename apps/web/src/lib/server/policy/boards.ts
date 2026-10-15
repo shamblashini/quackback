@@ -4,11 +4,12 @@
  * Pair every canViewBoard() with a matching boardViewFilter() so list
  * queries and single-row reads use the same predicate.
  */
-import { sql, isNull, type SQL, type AnyColumn } from 'drizzle-orm'
+import { sql, isNull, eq, or, type SQL, type AnyColumn } from 'drizzle-orm'
 import { boards, type BoardAccess, type AccessTier, type BoardKind } from '@/lib/server/db'
 import { allowDecision, denyDecision, isTeamActor, type Actor, type Decision } from './types'
 import { tierAllows } from './access'
 import { normalizeBoardAccess } from '@/lib/shared/schemas/boards'
+import { isPrivateReportAccess } from '@/lib/shared/report-privacy'
 
 function viewDenyMessage(tier: AccessTier): string {
   switch (tier) {
@@ -31,6 +32,9 @@ function viewDenyMessage(tier: AccessTier): string {
 export function canViewBoard(actor: Actor, board: { access: BoardAccess }): Decision {
   if (actor.testFeedback?.canView) return allowDecision()
   const access = normalizeBoardAccess(board.access)
+  // A private report board is a shell any signed-in account may file into; which
+  // reports they see is decided per post (canViewPost / postViewFilter).
+  if (isPrivateReportAccess(access) && actor.principalType === 'user') return allowDecision()
   return tierAllows(actor, access.view, access.segments.view)
     ? allowDecision()
     : denyDecision(viewDenyMessage(access.view))
@@ -77,6 +81,12 @@ export function boardViewFilter(actor: Actor): SQL {
         )
       `
       : sql`false`
+  // Private report board (kind reports + view team): the board is reachable by
+  // any signed-in user, mirroring canViewBoard. Which posts they see is cut down
+  // per row by postViewFilter.
+  const privateReportMatch = isUser
+    ? sql`${boards.access}->>'kind' = 'reports' AND ${boards.access}->>'view' = 'team'`
+    : sql`false`
   return sql`
     (
       ${isNull(boards.deletedAt)}
@@ -84,6 +94,7 @@ export function boardViewFilter(actor: Actor): SQL {
         ${boards.access}->>'view' = 'anonymous'
         OR (${boards.access}->>'view' = 'authenticated' AND ${isUser})
         OR (${segmentsMatch})
+        OR (${privateReportMatch})
       )
     )
   `
@@ -108,4 +119,19 @@ export function boardKindCondition(kind: BoardKind): SQL {
  */
 export function boardIdKindCondition(boardIdColumn: SQL | AnyColumn, kind: BoardKind): SQL {
   return sql`${boardIdColumn} IN (SELECT ${boards.id} FROM ${boards} WHERE ${boardKindCondition(kind)})`
+}
+
+/**
+ * Private report boards: a post on one is visible only to its author (and the
+ * team, who never reach this predicate). Composed into postViewFilter; reads
+ * `boards.access`, so the caller must join boards, as boardViewFilter requires.
+ */
+export function privateReportAuthorCondition(
+  actor: Actor,
+  postPrincipalId: Parameters<typeof eq>[0]
+): SQL {
+  const isPrivateReport = sql`(${boards.access}->>'kind' = 'reports' AND ${boards.access}->>'view' = 'team')`
+  if (!actor.principalId) return sql`NOT ${isPrivateReport}`
+  // eq() so the column's encoder maps the typeid to its uuid binding.
+  return or(sql`NOT ${isPrivateReport}`, eq(postPrincipalId, actor.principalId as never))!
 }

@@ -46,6 +46,7 @@ import {
   resolveReplyPolicy,
 } from '@/lib/shared/db-types'
 import { accessForPreset } from '@/lib/shared/schemas/boards'
+import { isPrivateReportAccess } from '@/lib/shared/report-privacy'
 import { INLINE_LINK } from '@/components/admin/settings/inline-link'
 
 /**
@@ -221,7 +222,20 @@ const REPLY_POLICY_LABEL = 'Only the post author and team members can reply'
  * replies stay public, only the reporter and the team can reply, and a
  * reporter can't delete a report once filed.
  */
-const REPORT_BOARD_LABEL = 'Public report board'
+const REPORT_BOARD_LABEL = 'Report board'
+
+/**
+ * A private report board (kind reports + view team) lets signed-in accounts file
+ * and reply while showing each of them only their own reports, so its submit and
+ * comment tiers may sit below View. Mirrors the exemption in boardAccessSchema.
+ */
+function privateReportExempt(
+  values: Pick<BoardAccess, 'kind' | 'view'>,
+  actionId: string,
+  tierId: AccessTier
+): boolean {
+  return isPrivateReportAccess(values) && actionId !== 'view' && tierId === 'authenticated'
+}
 
 // ─── Main form ────────────────────────────────────────────────────────
 
@@ -354,7 +368,11 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
   const handleTierClick = useCallback(
     (actionId: ActionId, tierId: AccessTier) => {
       // Tier hierarchy: comment/vote/submit can't be more open than view.
-      if (actionId !== 'view' && ACCESS_TIER_RANK[tierId] < ACCESS_TIER_RANK[values.view]) {
+      if (
+        actionId !== 'view' &&
+        ACCESS_TIER_RANK[tierId] < ACCESS_TIER_RANK[values.view] &&
+        !privateReportExempt(values, actionId, tierId)
+      ) {
         return
       }
       // Report boards: filing and replying need an account, never "Anyone".
@@ -389,7 +407,12 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
       if (actionId === 'view') {
         const vRank = ACCESS_TIER_RANK[tierId]
         ;(['vote', 'comment', 'submit'] as const).forEach((a) => {
-          if (ACCESS_TIER_RANK[values[a]] < vRank) {
+          const keepForPrivateReport =
+            tierId === 'team' &&
+            resolveBoardKind(values) === 'reports' &&
+            a !== 'vote' &&
+            values[a] === 'authenticated'
+          if (ACCESS_TIER_RANK[values[a]] < vRank && !keepForPrivateReport) {
             form.setValue(a, tierId, { shouldDirty: true })
             if (tierId !== 'segments') {
               form.setValue(`segments.${a}`, [], { shouldDirty: true })
@@ -445,6 +468,26 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
     [form]
   )
 
+  // Report boards are either public (anyone reads) or private (only the
+  // reporter and the team read). Private keeps filing and replying on
+  // signed-in accounts; the policy layer shows each reporter only their own.
+  const handleReportAudienceChange = useCallback(
+    (priv: boolean) => {
+      const opts = { shouldDirty: true } as const
+      form.setValue('view', priv ? 'team' : 'anonymous', opts)
+      form.setValue('segments.view', [], opts)
+      form.setValue('vote', 'team', opts)
+      form.setValue('segments.vote', [], opts)
+      ;(['comment', 'submit'] as const).forEach((a) => {
+        if (ACCESS_TIER_RANK[form.getValues(a)] < ACCESS_TIER_RANK.authenticated) {
+          form.setValue(a, 'authenticated', opts)
+          form.setValue(`segments.${a}`, [], opts)
+        }
+      })
+    },
+    [form]
+  )
+
   // `replyPolicy` is an optional key on BoardAccess (absent == 'anyone'), so
   // it may be missing from the form's defaults. Writing it explicitly on
   // toggle keeps the saved payload unambiguous in both directions.
@@ -474,9 +517,9 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
             <>
               Lists this board&apos;s posts on the portal&apos;s{' '}
               <span className="font-mono text-foreground">/reports</span> page instead of the
-              feedback feed and roadmaps. Every report and your team&apos;s replies stay public,
-              filing and replying need an account, only the reporter and your team can reply, and
-              reporters can&apos;t delete a report once filed.
+              feedback feed and roadmaps. Filing and replying need an account, only the reporter and
+              your team can reply, and reporters can&apos;t delete a report once filed. Choose below
+              who can read the reports.
             </>
           }
           control={
@@ -487,16 +530,40 @@ export function BoardAccessForm({ board }: BoardAccessFormProps) {
             />
           }
         />
-        {resolveBoardKind(values) === 'reports' && values.view !== 'anonymous' && (
-          <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
-            <InformationCircleIcon className="size-4 shrink-0" />
-            <span>
-              Reports are only readable by the View tier below. Set View to{' '}
-              <span className="text-foreground">Anyone</span> to make them public to the whole
-              community.
-            </span>
-          </p>
+        {resolveBoardKind(values) === 'reports' && (
+          <div
+            role="radiogroup"
+            aria-label="Who can read the reports"
+            className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+          >
+            <PresetCard
+              active={values.view === 'anonymous'}
+              label="Public (everyone can read)"
+              description="Every report and reply is readable by anyone the portal admits."
+              icon={<GlobeAltIcon className="h-3 w-3" />}
+              onClick={() => handleReportAudienceChange(false)}
+            />
+            <PresetCard
+              active={isPrivateReportAccess(values)}
+              label="Private (only the reporter and the team)"
+              description="Each reporter sees only their own reports. Nobody else can read them."
+              icon={<LockClosedIcon className="h-3 w-3" />}
+              onClick={() => handleReportAudienceChange(true)}
+            />
+          </div>
         )}
+        {resolveBoardKind(values) === 'reports' &&
+          values.view !== 'anonymous' &&
+          values.view !== 'team' && (
+            <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
+              <InformationCircleIcon className="size-4 shrink-0" />
+              <span>
+                Reports are only readable by the View tier below. Set View to{' '}
+                <span className="text-foreground">Anyone</span> to make them public to the whole
+                community.
+              </span>
+            </p>
+          )}
       </div>
 
       <div className="space-y-4">
@@ -794,7 +861,8 @@ function MatrixRow({
 
       {TIERS.map((tier) => {
         const isSelected = selectedTier === tier.id
-        const hierarchyBlocked = ACCESS_TIER_RANK[tier.id] < minRank
+        const hierarchyBlocked =
+          ACCESS_TIER_RANK[tier.id] < minRank && !privateReportExempt(values, action.id, tier.id)
         // Workspace ceiling: vote/comment/submit's `anonymous` cell moves
         // as a single unit, gated by the workspace allowAnonymous switch.
         // View has no ceiling.
