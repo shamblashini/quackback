@@ -12,6 +12,7 @@ import { boardTabSearch, type BoardTab } from '@/components/admin/settings/board
 import { BoardGeneralForm } from '@/components/admin/settings/boards/board-general-form'
 import { BoardAccessForm } from '@/components/admin/settings/boards/board-access-form'
 import { BoardModerationForm } from '@/components/admin/settings/boards/board-moderation-form'
+import { BoardFieldsForm } from '@/components/admin/settings/boards/board-fields-form'
 import { BoardImportSection } from '@/components/admin/settings/boards/board-import-section'
 import { BoardExportSection } from '@/components/admin/settings/boards/board-export-section'
 import { DeleteBoardForm } from '@/components/admin/settings/boards/delete-board-form'
@@ -99,6 +100,7 @@ function BoardSettingsPage() {
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="access">Access</TabsTrigger>
           <TabsTrigger value="moderation">Moderation</TabsTrigger>
+          <TabsTrigger value="fields">Form fields</TabsTrigger>
           <TabsTrigger value="data">Data</TabsTrigger>
         </TabsList>
 
@@ -121,6 +123,12 @@ function BoardSettingsPage() {
         <TabsContent value="moderation">
           <SettingsCard>
             <BoardModerationForm key={currentBoard.id} board={currentBoard} />
+          </SettingsCard>
+        </TabsContent>
+
+        <TabsContent value="fields">
+          <SettingsCard>
+            <BoardFieldsForm key={currentBoard.id} board={currentBoard} />
           </SettingsCard>
         </TabsContent>
 

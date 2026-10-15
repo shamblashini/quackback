@@ -54,15 +54,6 @@ describe('boardSettingsSchema customFields', () => {
     expect(result.success).toBe(true)
   })
 
-  it('drops blank optional strings', () => {
-    const result = parse([{ ...base, helpText: '  ', placeholder: '' }])
-    expect(result.success).toBe(true)
-    if (result.success) {
-      expect(result.data.customFields?.[0]?.helpText).toBeUndefined()
-      expect(result.data.customFields?.[0]?.placeholder).toBeUndefined()
-    }
-  })
-
   it('rejects unknown keys and types', () => {
     expect(parse([{ ...base, extra: 1 }]).success).toBe(false)
     expect(parse([{ ...base, type: 'color' }]).success).toBe(false)

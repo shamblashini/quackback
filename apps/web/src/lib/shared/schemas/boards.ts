@@ -151,16 +151,11 @@ export const BOARD_RULES_MAX_LENGTH = 10000
 export const BOARD_CUSTOM_FIELDS_MAX = 20
 export const BOARD_CUSTOM_FIELD_OPTIONS_MAX = 50
 
-const trimmedOptional = (max: number) =>
-  z
-    .string()
-    .max(max)
-    .optional()
-    .transform((v) => (v === undefined || v.trim() === '' ? undefined : v))
+const optionalText = (max: number) => z.string().max(max).optional()
 
 /**
  * One configurable board intake field (see `BoardCustomField`). Strict so
- * unknown keys are rejected; empty optional strings are dropped.
+ * unknown keys are rejected.
  */
 export const boardCustomFieldSchema = z
   .object({
@@ -176,8 +171,8 @@ export const boardCustomFieldSchema = z
       .array(z.string().trim().min(1).max(120))
       .max(BOARD_CUSTOM_FIELD_OPTIONS_MAX)
       .optional(),
-    helpText: trimmedOptional(1000),
-    placeholder: trimmedOptional(200),
+    helpText: optionalText(1000),
+    placeholder: optionalText(200),
     pattern: z
       .object({
         regex: z.string().min(1).max(POST_CUSTOM_FIELD_PATTERN_MAX_LENGTH),
@@ -187,7 +182,7 @@ export const boardCustomFieldSchema = z
       .optional(),
     warnDomains: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
     warnOlderThanHours: z.number().int().positive().max(87_600).optional(),
-    warnMessage: trimmedOptional(300),
+    warnMessage: optionalText(300),
   })
   .strict()
   .superRefine((field, ctx) => {

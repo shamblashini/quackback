@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-const BOARD_TABS = ['general', 'access', 'moderation', 'data'] as const
+const BOARD_TABS = ['general', 'access', 'moderation', 'fields', 'data'] as const
 export type BoardTab = (typeof BOARD_TABS)[number]
 
 /**
